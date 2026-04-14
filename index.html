@@ -2,17 +2,63 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>천국으로 (Towards Heaven) - Balanced</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>천국으로 (Towards Heaven) - Mobile Edition</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #050505; font-family: 'Courier New', monospace; }
-        canvas { display: block; margin: 0 auto; image-rendering: pixelated; background: #0a0a0a; }
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background: #050505; 
+            font-family: 'Courier New', monospace; 
+            /* 모바일에서 텍스트 선택 및 롱탭 메뉴 방지 */
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+            touch-action: none;
+        }
+        canvas { display: block; margin: 0 auto; image-rendering: pixelated; background: #0a0a0a; width: 100vw; height: 100vh; object-fit: contain; }
         #ui { position: absolute; top: 20px; left: 20px; color: #fff; text-shadow: 2px 2px 0 #000; pointer-events: none; z-index: 10; }
         #deathMessage { 
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             color: #fff; font-size: 50px; font-weight: bold; display: none; 
             text-shadow: 0 0 20px #fff, 0 0 30px #00ffff;
             animation: pulse 0.5s infinite;
+            z-index: 20;
         }
+        
+        /* 모바일 컨트롤 레이어 */
+        #mobileControls {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 180px;
+            z-index: 30; pointer-events: none;
+        }
+        /* 드래그 패드 (좌측 하단) */
+        #dragPad {
+            position: absolute; bottom: 30px; left: 30px;
+            width: 120px; height: 120px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            pointer-events: auto;
+        }
+        #dragStick {
+            position: absolute; top: 50%; left: 50%;
+            width: 50px; height: 50px; margin: -25px 0 0 -25px;
+            background: rgba(0, 255, 255, 0.5);
+            border-radius: 50%;
+        }
+        /* 점프 버튼 (우측 하단) */
+        #jumpBtn {
+            position: absolute; bottom: 40px; right: 40px;
+            width: 90px; height: 90px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 3px solid #00ffff;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-weight: bold; font-size: 20px;
+            pointer-events: auto;
+            active { background: rgba(0, 255, 255, 0.4); }
+        }
+
         @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
     </style>
 </head>
@@ -22,7 +68,15 @@
         <p>DEATHS: <span id="deathCount">0</span></p>
     </div>
     <div id="deathMessage">정화 중...</div>
+    
     <canvas id="gameCanvas"></canvas>
+
+    <div id="mobileControls">
+        <div id="dragPad">
+            <div id="dragStick"></div>
+        </div>
+        <div id="jumpBtn">JUMP</div>
+    </div>
 
 <script>
 const canvas = document.getElementById('gameCanvas');
@@ -35,6 +89,10 @@ const player = {
     onGround: false, alive: true, canJump: false, jumpInputReady: true 
 };
 
+// 모바일 입력 변수
+let moveDir = 0; // -1 (왼쪽), 0 (정지), 1 (오른쪽)
+let touchJump = false;
+
 let particles = [];
 let currentStage = 0;
 let deaths = 0;
@@ -43,7 +101,7 @@ let jumpTimer = 0;
 let keys = {}; 
 let gameFrame = 0;
 
-// 스테이지 데이터 (이전과 동일)
+// [기존 스테이지 데이터 및 파티클 로직 동일]
 const stages = [
     {
         name: "THE TRIAL",
@@ -92,7 +150,7 @@ const stages = [
     }
 ];
 
-// 이펙트 및 유틸리티
+// 이펙트 및 유틸リティ 로직 생략 (기존 코드와 동일)
 function createAscensionParticles(x, y) {
     for (let i = 0; i < 20; i++) {
         particles.push({ 
@@ -105,14 +163,12 @@ function createAscensionParticles(x, y) {
         });
     }
 }
-
 function updateParticles() {
     for (let i = particles.length - 1; i >= 0; i--) {
         let p = particles[i]; p.x += p.vx; p.y += p.vy; p.life -= 0.02;
         if (p.life <= 0) particles.splice(i, 1);
     }
 }
-
 const createBrickPattern = (c1, c2) => {
     const p = document.createElement('canvas'); p.width=16; p.height=16;
     const c = p.getContext('2d'); c.fillStyle=c1; c.fillRect(0,0,16,16);
@@ -122,7 +178,51 @@ const createBrickPattern = (c1, c2) => {
 const bgPattern = createBrickPattern('#0a0a1a', '#000000');
 const platPattern = createBrickPattern('#444', '#111');
 
-// 입력 처리
+// --- 모바일 드래그 및 점프 로직 ---
+const dragPad = document.getElementById('dragPad');
+const dragStick = document.getElementById('dragStick');
+const jumpBtn = document.getElementById('jumpBtn');
+
+dragPad.addEventListener('touchstart', handleDrag);
+dragPad.addEventListener('touchmove', handleDrag);
+dragPad.addEventListener('touchend', () => {
+    dragStick.style.transform = `translate(0px, 0px)`;
+    moveDir = 0;
+});
+
+function handleDrag(e) {
+    const touch = e.touches[0];
+    const rect = dragPad.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const deltaX = touch.clientX - centerX;
+    
+    // 최대 드래그 거리 제한 (시각적)
+    const maxDist = 40;
+    const clampedX = Math.max(-maxDist, Math.min(maxDist, deltaX));
+    dragStick.style.transform = `translate(${clampedX}px, 0px)`;
+
+    // 이동 방향 결정 (데드존 적용)
+    if (deltaX > 15) moveDir = 1;
+    else if (deltaX < -15) moveDir = -1;
+    else moveDir = 0;
+}
+
+jumpBtn.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if (player.jumpInputReady) {
+        player.canJump = true; 
+        player.jumpInputReady = false;
+        touchJump = true;
+    }
+});
+jumpBtn.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    player.jumpInputReady = true; 
+    player.canJump = false;
+    touchJump = false;
+});
+
+// 키보드 지원 유지
 window.addEventListener('keydown', e => { 
     if ((e.code === 'KeyW' || e.code === 'Space' || e.code === 'ArrowUp') && player.jumpInputReady) {
         player.canJump = true; player.jumpInputReady = false; 
@@ -143,7 +243,7 @@ function die() {
     deaths++;
     document.getElementById('deathCount').innerText = deaths;
     document.getElementById('deathMessage').style.display = 'block';
-    setTimeout(resetPlayer, 600); // 리스폰 속도 0.6초로 단축
+    setTimeout(resetPlayer, 600);
 }
 
 function resetPlayer() {
@@ -159,7 +259,7 @@ function resetPlayer() {
 }
 
 function checkCollision(r1, r2) {
-    const m = 4; // 히트박스 보정 유지
+    const m = 4;
     return r1.x + m < r2.x + r2.w && r1.x + r1.w - m > r2.x && r1.y + m < r2.y + r2.h && r1.y + r1.h - m > r2.y;
 }
 
@@ -168,21 +268,23 @@ function update() {
     updateParticles();
     if(!player.alive) return;
 
-    // 좌우 이동 (속도 상향 반영)
+    // 좌우 이동 (키보드 + 모바일 통합)
     let targetVx = 0;
     let currentSpeed = player.onGround ? player.speed : player.airSpeed;
-    if (keys['KeyA'] || keys['ArrowLeft']) targetVx = -currentSpeed;
-    else if (keys['KeyD'] || keys['ArrowRight']) targetVx = currentSpeed;
     
-    // 부드러운 가속/감속 (Lerp와 유사한 처리)
+    if (keys['KeyA'] || keys['ArrowLeft'] || moveDir === -1) targetVx = -currentSpeed;
+    else if (keys['KeyD'] || keys['ArrowRight'] || moveDir === 1) targetVx = currentSpeed;
+    
     player.vx += (targetVx - player.vx) * 0.8;
 
-    // 점프 로직
-    if ((keys['KeyW'] || keys['Space'] || keys['ArrowUp']) && player.onGround && player.canJump) {
+    // 점프 로직 (키보드 + 모바일 통합)
+    const jumpPressed = keys['KeyW'] || keys['Space'] || keys['ArrowUp'] || touchJump;
+    
+    if (jumpPressed && player.onGround && player.canJump) {
         player.vy = player.jumpForce; player.onGround = false; isJumping = true; jumpTimer = 0; player.canJump = false;
     }
     if (isJumping) {
-        if ((keys['KeyW'] || keys['Space'] || keys['ArrowUp']) && jumpTimer < player.maxJumpTime) {
+        if (jumpPressed && jumpTimer < player.maxJumpTime) {
             player.vy -= 0.6; jumpTimer++;
         } else { isJumping = false; }
     }
@@ -191,7 +293,7 @@ function update() {
     const stage = stages[currentStage];
     player.onGround = false;
 
-    // 충돌 처리 (플랫폼)
+    // 충돌 처리 (플랫폼/가시 등 기존 로직 동일)
     stage.platforms.forEach(p => {
         if(p.hidden) return;
         if(p.type === 'trigger-hide-y') {
@@ -213,14 +315,12 @@ function update() {
         }
     });
 
-    // 충돌 처리 (가시)
     stage.spikes.forEach(s => {
         if(s.type === 'hidden-appear') { if(player.x > s.triggerX) s.revealed = true; } 
         else s.revealed = true;
         if (s.revealed && checkCollision(player, s)) die();
     });
 
-    // 골인
     if (checkCollision(player, stage.goal)) {
         currentStage++;
         if (currentStage >= stages.length) { alert("축하합니다! 천국에 도달하셨습니다."); currentStage = 0; deaths = 0; }
@@ -235,22 +335,19 @@ function draw() {
     const stage = stages[currentStage];
     ctx.fillStyle = bgPattern; ctx.fillRect(0,0,800,600);
 
-    // 파티클
     particles.forEach(p => { ctx.fillStyle = p.color; ctx.globalAlpha = p.life; ctx.fillRect(p.x, p.y, p.size, p.size); ctx.globalAlpha = 1; });
 
-    // 플랫폼
     stage.platforms.forEach(p => {
         if(p.hidden || (p.type === 'trigger-y-exact' && !p.revealed)) return;
         ctx.fillStyle = platPattern; ctx.fillRect(p.x, p.y, p.w, p.h);
         ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1; ctx.strokeRect(p.x, p.y, p.w, p.h);
     });
 
-    // 가시 가시성 업그레이드 (네온 레드)
     stage.spikes.forEach(s => {
         if(!s.revealed) return;
         const glow = Math.sin(gameFrame * 0.1) * 5 + 5;
         ctx.shadowBlur = glow; ctx.shadowColor = "#ff3300";
-        ctx.fillStyle = '#ff2222'; // 위험을 알리는 붉은색
+        ctx.fillStyle = '#ff2222';
         for(let i=0; i<Math.floor(s.w/10); i++) {
             ctx.beginPath(); 
             ctx.moveTo(s.x+i*10, s.y+s.h); 
@@ -261,12 +358,10 @@ function draw() {
         ctx.shadowBlur = 0;
     });
 
-    // 골
     ctx.fillStyle = '#ffdf00'; ctx.shadowBlur = 20; ctx.shadowColor = '#fff';
     ctx.beginPath(); ctx.arc(stage.goal.x + stage.goal.w/2, stage.goal.y + stage.goal.h/2, 15, 0, Math.PI * 2); ctx.fill();
     ctx.shadowBlur = 0;
 
-    // 플레이어
     if(player.alive) { 
         ctx.fillStyle = '#00ffff'; ctx.fillRect(player.x, player.y, player.w, player.h);
         ctx.fillStyle = '#000'; ctx.fillRect(player.x+4, player.y+4, 4, 4); ctx.fillRect(player.x+12, player.y+4, 4, 4);
