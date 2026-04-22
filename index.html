@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Project Color-Shot v11.1 (C-Zone Expanded)</title>
+    <title>Project Color-Shot v11.2 (Countdown & Auto-Flush)</title>
     <style>
         * {
             box-sizing: border-box;
@@ -127,9 +127,20 @@
             z-index: 20;
         }
 
-            #itemBtn:active { transform: scale(0.9); }
-            #itemBtn.disabled { cursor: not-allowed; opacity: 0.3; filter: grayscale(100%); }
-            #itemBtn.active { background: linear-gradient(135deg, #2ecc71, #27ae60); border-color: #fff; }
+            #itemBtn:active {
+                transform: scale(0.9);
+            }
+
+            #itemBtn.disabled {
+                cursor: not-allowed;
+                opacity: 0.3;
+                filter: grayscale(100%);
+            }
+
+            #itemBtn.active {
+                background: linear-gradient(135deg, #2ecc71, #27ae60);
+                border-color: #fff;
+            }
 
         .virtual-stick-guide {
             position: absolute;
@@ -150,50 +161,183 @@
         }
 
             .virtual-stick-guide::after {
-                content: ''; width: 34px; height: 34px;
-                background: #444; border-radius: 50%; border: 2px solid #222;
+                content: '';
+                width: 34px;
+                height: 34px;
+                background: #444;
+                border-radius: 50%;
+                border: 2px solid #222;
             }
 
-        #game-container.dragging .virtual-stick-guide { opacity: 1; background: rgba(255,255,255,0.3); }
+        #game-container.dragging .virtual-stick-guide {
+            opacity: 1;
+            background: rgba(255,255,255,0.3);
+        }
 
         .popup {
-            display: none; position: absolute; top: 0; left: 0;
-            width: 100%; height: 100%; background: rgba(0,0,0,0.85);
-            pointer-events: auto; flex-direction: column;
-            justify-content: center; align-items: center;
-            color: white; z-index: 100; touch-action: auto;
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            pointer-events: auto;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 100;
+            touch-action: auto;
         }
 
             .popup button {
-                margin-top: 10px; padding: 12px 25px; font-size: 15px;
-                font-weight: bold; border: none; background-color: #5b8fb9;
-                color: white; border-radius: 8px; cursor: pointer; transition: 0.2s;
+                margin-top: 10px;
+                padding: 12px 25px;
+                font-size: 15px;
+                font-weight: bold;
+                border: none;
+                background-color: #5b8fb9;
+                color: white;
+                border-radius: 8px;
+                cursor: pointer;
+                transition: 0.2s;
             }
-                .popup button:active { transform: scale(0.95); }
 
-        #menuUI { background: transparent; justify-content: flex-start; padding-top: 80px; }
-            #menuUI h1 { font-size: 36px; text-align: center; margin-bottom: 5px; color: #fff; }
-            #menuUI .nickname { font-size: 14px; color: #eee; margin-bottom: 40px; }
+                .popup button:active {
+                    transform: scale(0.95);
+                }
 
-        .menu-btn-group { display: flex; flex-direction: column; gap: 10px; width: 60%; }
+        #menuUI {
+            background: transparent;
+            justify-content: flex-start;
+            padding-top: 80px;
+        }
 
-        #shopPopup { justify-content: flex-start; padding-top: 30px; }
-        .shop-tabs { display: flex; width: 90%; gap: 5px; margin-bottom: 10px; }
-            .shop-tabs button { flex: 1; padding: 10px 0; font-size: 13px; margin-top: 0; background-color: #34495e; border-radius: 5px 5px 0 0; }
-                .shop-tabs button.active { background-color: #5b8fb9; border-bottom: 3px solid #fff; }
+            #menuUI h1 {
+                font-size: 36px;
+                text-align: center;
+                margin-bottom: 5px;
+                color: #fff;
+            }
 
-        .shop-list { width: 100%; max-height: 60%; overflow-y: auto; display: flex; flex-direction: column; align-items: center; -webkit-overflow-scrolling: touch; }
-        .shop-item { background: rgba(255,255,255,0.15); padding: 15px; border-radius: 8px; margin-bottom: 10px; width: 85%; text-align: center; border: 1px solid rgba(255,255,255,0.2); }
-            .shop-item.locked { opacity: 0.5; background: rgba(100,100,100,0.2); }
-        .item-name { font-weight: bold; font-size: 16px; margin-bottom: 5px; color: #fff; }
-        .item-desc { font-size: 12px; color: #ddd; margin-bottom: 10px; line-height: 1.4; }
-        .btn-group { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+            #menuUI .nickname {
+                font-size: 14px;
+                color: #eee;
+                margin-bottom: 40px;
+            }
 
-        .ranking-board { background: rgba(255,255,255,0.1); border-radius: 8px; padding: 15px; width: 80%; margin: 15px 0; border: 1px solid rgba(255,255,255,0.3); }
-            .ranking-board h3 { margin: 0 0 10px 0; text-align: center; color: #ffd700; }
-        .rank-item { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 14px; }
+        .menu-btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 60%;
+        }
 
-        #fpsDisplay { position: absolute; top: 2px; right: 5px; font-size: 10px; color: rgba(0,255,0,0.7); pointer-events: none; z-index: 999; font-family: monospace; }
+        #shopPopup {
+            justify-content: flex-start;
+            padding-top: 30px;
+        }
+
+        .shop-tabs {
+            display: flex;
+            width: 90%;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+
+            .shop-tabs button {
+                flex: 1;
+                padding: 10px 0;
+                font-size: 13px;
+                margin-top: 0;
+                background-color: #34495e;
+                border-radius: 5px 5px 0 0;
+            }
+
+                .shop-tabs button.active {
+                    background-color: #5b8fb9;
+                    border-bottom: 3px solid #fff;
+                }
+
+        .shop-list {
+            width: 100%;
+            max-height: 60%;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .shop-item {
+            background: rgba(255,255,255,0.15);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            width: 85%;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+            .shop-item.locked {
+                opacity: 0.5;
+                background: rgba(100,100,100,0.2);
+            }
+
+        .item-name {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 5px;
+            color: #fff;
+        }
+
+        .item-desc {
+            font-size: 12px;
+            color: #ddd;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+
+        .btn-group {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .ranking-board {
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 15px;
+            width: 80%;
+            margin: 15px 0;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+            .ranking-board h3 {
+                margin: 0 0 10px 0;
+                text-align: center;
+                color: #ffd700;
+            }
+
+        .rank-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        #fpsDisplay {
+            position: absolute;
+            top: 2px;
+            right: 5px;
+            font-size: 10px;
+            color: rgba(0,255,0,0.7);
+            pointer-events: none;
+            z-index: 999;
+            font-family: monospace;
+        }
     </style>
 </head>
 <body>
@@ -205,7 +349,7 @@
             <div class="ui-layer" id="inGameUI" style="display:none;">
                 <div class="top-bar">
                     <span id="uiNickname">유저명</span>
-                    <span id="uiTurn" style="color:#e74c3c;">Turn: 1/10</span>
+                    <span id="uiTurn" style="color:#e74c3c;">남은 턴: 10</span>
                     <span>
                         <span id="uiScore" style="margin-right:8px;">점수: 0</span>
                         <span id="uiGold">💰 0</span>
@@ -257,15 +401,6 @@
     </div>
 
     <script>
-        /* ==========================================================
-           Color-Shot v11.1  |  C-Zone Expanded (1.5x)
-
-           ★ 업데이트 내역:
-           1. C존 세로 길이 1.5배 증가 (height: 120 -> 180)
-           2. C존 내부 버프 영역 분배 확대 (h: 60 -> 90)
-           3. C존 가이드 배경 및 이동 범위(maxY) 동적 호환 처리 완비
-           ========================================================== */
-
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d', { alpha: true, desynchronized: true });
         const gcElem = document.getElementById('game-container');
@@ -288,8 +423,8 @@
         const WIND_M = 0.0025;
 
         const TARGET_FPS = 144;
-        const MS_PER_UPDATE = 1000 / TARGET_FPS; 
-        const GLOBAL_TIME_SCALE = 1.0; 
+        const MS_PER_UPDATE = 1000 / TARGET_FPS;
+        const GLOBAL_TIME_SCALE = 1.0;
 
         const MAX_RENDER_FPS = 60;
         const RENDER_INTERVAL = 1000 / MAX_RENDER_FPS;
@@ -314,14 +449,14 @@
             if (audioThrottle[key] && now - audioThrottle[key] < 100) return;
             audioThrottle[key] = now;
             a.currentTime = 0;
-            a.play().catch(() => {});
+            a.play().catch(() => { });
         }
 
         const GAME = {
-            state: 'menu', turn: 1, maxTurns: 10, totalDamage: 0, gold: 0,
+            state: 'menu', turn: 10, maxTurns: 10, totalDamage: 0, gold: 0,
             nickname: '', wind: 0, cameraX: 0, turnWaiting: false, itemActive: false,
             _lastDmg: -1, _lastGold: -1, _turnId: 0,
-            turnBonusAwarded: false 
+            turnBonusAwarded: false
         };
 
         const CAMERA = { shakeFrames: 0, shakeIntensity: 0 };
@@ -410,18 +545,17 @@
         }
 
         let bZone = { x: 280, width: 45, dir: 1, speed: 0.4, minX: 200, maxX: 380, segments: [], obstacleBlocks: [] };
-        
-        // ★ C존 세로길이 1.5배 상향 완료 (height 120 -> 180, 구역별 높이 60 -> 90)
-        let cZone = { 
-            x: 500, y: 300, width: 25, 
-            height: 180, 
-            dir: 1, speed: 0.8, minY: 100, maxY: 540, 
-            segments: [ 
-                { type: 'goldMult', text: '💰 x2', color: 'rgba(50,255,50,0.5)', yOff: 0, h: 90 }, 
-                { type: 'qty4', text: 'x4', color: 'rgba(255,215,0,0.6)', yOff: 90, h: 90 } 
-            ] 
+
+        let cZone = {
+            x: 500, y: 300, width: 25,
+            height: 180,
+            dir: 1, speed: 0.8, minY: 100, maxY: 540,
+            segments: [
+                { type: 'goldMult', text: '💰 x2', color: 'rgba(50,255,50,0.5)', yOff: 0, h: 90 },
+                { type: 'qty4', text: 'x4', color: 'rgba(255,215,0,0.6)', yOff: 90, h: 90 }
+            ]
         };
-        
+
         let targetBlocks = []; const weakPoint = { x: 630, y: 510 };
 
         function initTarget() {
@@ -436,13 +570,13 @@
 
         function generateBZone() {
             bZone.segments = []; bZone.obstacleBlocks = [];
-            const midTypes = [ 
-                { id: 'qty6', text: '개수 x6', color: 'rgba(255,215,0,0.7)' }, 
-                { id: 'qty3', text: '개수 x3', color: 'rgba(0,191,255,0.6)' }, 
-                { id: 'turnPlus', text: 'TURN +1', color: 'rgba(255,50,255,0.7)' }, 
-                { id: 'qty3_2', text: '개수 x3', color: 'rgba(0,191,255,0.6)' } 
+            const midTypes = [
+                { id: 'qty6', text: '개수 x6', color: 'rgba(255,215,0,0.7)' },
+                { id: 'qty3', text: '개수 x3', color: 'rgba(0,191,255,0.6)' },
+                { id: 'turnPlus', text: 'TURN +1', color: 'rgba(255,50,255,0.7)' },
+                { id: 'qty3_2', text: '개수 x3', color: 'rgba(0,191,255,0.6)' }
             ].sort(() => Math.random() - 0.5);
-            
+
             let cy = 80;
             for (let i = 0; i < 4; i++) { bZone.segments.push({ ...midTypes[i], y: cy, height: 75 }); cy += 75; }
             for (let c = 0; c < 2; c++) for (let r = 0; r < 4; r++) bZone.obstacleBlocks.push({ relX: c * 20, y: r * 20, w: 20, h: 20, hp: 2 });
@@ -482,21 +616,21 @@
         function startLoop() {
             if (rafId) return;
             lastTime = performance.now();
-            
+
             function tick(now) {
                 rafId = requestAnimationFrame(tick);
                 let dt = now - lastTime;
                 if (dt < RENDER_INTERVAL) return;
 
                 lastTime = now - (dt % RENDER_INTERVAL);
-                if (dt > 250) dt = 250; 
+                if (dt > 250) dt = 250;
 
                 updateFPS(now);
-                updateControls(dt / 1000); 
+                updateControls(dt / 1000);
 
                 accumulator += dt * GLOBAL_TIME_SCALE;
                 while (accumulator >= MS_PER_UPDATE) {
-                    updatePhysics(); 
+                    updatePhysics();
                     accumulator -= MS_PER_UPDATE;
                 }
 
@@ -519,7 +653,17 @@
         }
 
         function updateUITurnAndItems() {
-            UI.nickname.textContent = GAME.nickname; UI.turn.textContent = `Turn: ${GAME.turn}/${GAME.maxTurns}`; UI.itemCount.textContent = `${player.items.tactical}/3`;
+            UI.nickname.textContent = GAME.nickname; 
+            
+            // 턴수 표시 (남은 턴이 3 이하면 붉은 텍스트 강조)
+            if(GAME.turn <= 3) {
+                UI.turn.style.color = '#ff3333';
+            } else {
+                UI.turn.style.color = '#e74c3c';
+            }
+            UI.turn.textContent = `남은 턴: ${GAME.turn}`; 
+            
+            UI.itemCount.textContent = `${player.items.tactical}/3`;
             if (GAME.itemActive) UI.itemBtn.classList.add('active'); else UI.itemBtn.classList.remove('active');
             if (player.items.tactical === 0 || GAME.state !== 'aiming') UI.itemBtn.classList.add('disabled'); else UI.itemBtn.classList.remove('disabled');
         }
@@ -527,7 +671,8 @@
         function startGame() {
             GAME._turnId++; clearProjectiles(); clearParticles(); clearFloats(); windParticles = [];
             UI.menuUI.style.display = 'none'; UI.inGameUI.style.display = 'block';
-            GAME.turn = 1; GAME.totalDamage = 0; GAME.cameraX = 0; GAME.itemActive = false; GAME._lastDmg = -1; GAME._lastGold = -1;
+            GAME.turn = GAME.maxTurns; // 내림차순 시작
+            GAME.totalDamage = 0; GAME.cameraX = 0; GAME.itemActive = false; GAME._lastDmg = -1; GAME._lastGold = -1;
             GAME.turnBonusAwarded = false;
             initTarget(); generateBZone(); initTurnEnvironment();
         }
@@ -543,7 +688,7 @@
 
         function useItem() {
             if (GAME.state !== 'aiming' || player.items.tactical <= 0) return;
-            if (GAME.itemActive) { GAME.itemActive = false; initTurnEnvironment(); addFloatingText(player.x, player.y - 40, '아이템 취소', '#fff'); } 
+            if (GAME.itemActive) { GAME.itemActive = false; initTurnEnvironment(); addFloatingText(player.x, player.y - 40, '아이템 취소', '#fff'); }
             else { GAME.itemActive = true; GAME.wind = 0; UI.wind.textContent = '🌬️ 날씨: 멈춤 (아이템 대기 중)'; initWindParticles(); addFloatingText(player.x, player.y - 40, '정지 & x2 활성!', '#f39c12'); }
             updateUITurnAndItems();
         }
@@ -570,13 +715,14 @@
             document.getElementById('resultScorePop').textContent = `이번 판 점수: ${GAME.totalDamage}`;
             document.getElementById('resultGoldText').textContent = `누적 보유 재화: 💰 ${GAME.gold}`;
             saveLocalData();
-            const list = [ { n: '전설의 기획자', s: GAME.totalDamage + 5000 }, { n: '불타는 지갑', s: GAME.totalDamage + 1500 }, { n: GAME.nickname, s: GAME.totalDamage } ].sort((a, b) => b.s - a.s);
+            const list = [{ n: '전설의 기획자', s: GAME.totalDamage + 5000 }, { n: '불타는 지갑', s: GAME.totalDamage + 1500 }, { n: GAME.nickname, s: GAME.totalDamage }].sort((a, b) => b.s - a.s);
             document.getElementById('mockRanking').innerHTML = list.map((item, i) => `<div class="rank-item" style="color:${item.n === GAME.nickname ? '#ffd700' : '#ddd'};font-weight:${item.n === GAME.nickname ? 'bold' : 'normal'};"><span>${i + 1}위. ${item.n}</span><span>${item.s} 점</span></div>`).join('');
         }
 
+        // 데이터 저장 및 새로고침을 통해 메모리 누수 완벽 방지
         function returnToMenu() {
-            UI.resultPop.style.display = 'none'; UI.menuUI.style.display = 'flex'; GAME.state = 'menu'; GAME.cameraX = 0;
-            clearProjectiles(); clearParticles(); clearFloats(); windParticles = [];
+            saveLocalData();
+            location.reload(); 
         }
 
         function updatePhysics() {
@@ -600,14 +746,18 @@
             }
 
             if (GAME.state === 'returning') {
-                GAME.cameraX -= 12; 
-                if (GAME.cameraX <= 0) { 
-                    GAME.cameraX = 0; 
-                    if (!GAME.turnWaiting) { 
+                GAME.cameraX -= 12;
+                if (GAME.cameraX <= 0) {
+                    GAME.cameraX = 0;
+                    if (!GAME.turnWaiting) {
                         GAME.state = 'aiming';
-                        if (!GAME.turnBonusAwarded) GAME.turn++;
-                        GAME.turnBonusAwarded = false; 
-                        if (GAME.turn > GAME.maxTurns) endGame(); else initTurnEnvironment(); 
+                        
+                        // 턴 보너스를 안 먹었다면 내림차순 턴 감소
+                        if (!GAME.turnBonusAwarded) GAME.turn--;
+                        GAME.turnBonusAwarded = false;
+                        
+                        // 턴이 0이 되면 사망(게임 종료)
+                        if (GAME.turn <= 0) endGame(); else initTurnEnvironment();
                     }
                 }
             }
@@ -631,7 +781,7 @@
                             if (dx * dx + dy * dy <= p.radius * p.radius) {
                                 hitObs = true; ob.hp--; p.active = false; playSound('hit_metal'); triggerShake(6, 10);
                                 createHitParticles(p.x, p.y, '#7f8c8d');
-                                if (ob.hp <= 0) { addFloatingText(obX, p.y, '파괴됨!', '#e74c3c'); playSound('break_metal'); bZone.obstacleBlocks.splice(j, 1); } 
+                                if (ob.hp <= 0) { addFloatingText(obX, p.y, '파괴됨!', '#e74c3c'); playSound('break_metal'); bZone.obstacleBlocks.splice(j, 1); }
                                 else { addFloatingText(obX, p.y, '흠집!', '#f39c12'); }
                                 break;
                             }
@@ -643,7 +793,7 @@
                                 const s = bZone.segments[k];
                                 if (p.y >= s.y && p.y <= s.y + s.height) {
                                     p.passedBZone = true; playSound('buff');
-                                    
+
                                     if (s.id === 'turnPlus') {
                                         if (!GAME.turnBonusAwarded) {
                                             GAME.turnBonusAwarded = true;
@@ -651,7 +801,7 @@
                                         }
                                     } else if (s.id.startsWith('qty')) {
                                         const mul = s.id === 'qty6' ? 6 : 3;
-                                        const lim = projectiles.length > 40 ? 1 : mul; 
+                                        const lim = projectiles.length > 40 ? 1 : mul;
                                         addFloatingText(bZone.x, p.y - 20, `개수 x${mul}`, s.color);
                                         for (let j = 1; j < lim; j++) {
                                             const np = ProjectilePool.get(p.x, p.y, p.vx + (Math.random() - 0.5) * 1.5, p.vy + (Math.random() - 0.5) * 1.5, p.radius, p.baseDmg, p.pLevel, p.color, p.bMult, p.bType, p.gMult);
@@ -670,7 +820,7 @@
                             const s = cZone.segments[k];
                             if (relY >= s.yOff && relY <= s.yOff + s.h) {
                                 playSound('buff');
-                                if (s.type === 'goldMult') { p.gMult = 2; addFloatingText(cZone.x, p.y - 20, '💰 x2', '#0f0'); } 
+                                if (s.type === 'goldMult') { p.gMult = 2; addFloatingText(cZone.x, p.y - 20, '💰 x2', '#0f0'); }
                                 else if (s.type === 'qty4') {
                                     const cnt = projectiles.length > 40 ? 1 : 4; addFloatingText(cZone.x, p.y - 20, 'C존 개수 x4', s.color);
                                     for (let j = 1; j < cnt; j++) {
@@ -714,11 +864,11 @@
 
                 if (activeCount === 0 && !GAME.turnWaiting) {
                     GAME.turnWaiting = true; saveLocalData(); const capturedId = ++GAME._turnId;
-                    setTimeout(() => { 
+                    setTimeout(() => {
                         if (GAME._turnId === capturedId && GAME.state === 'flying') {
-                            GAME.state = 'returning'; 
-                            GAME.turnWaiting = false; 
-                        } 
+                            GAME.state = 'returning';
+                            GAME.turnWaiting = false;
+                        }
                     }, 800);
                 }
             }
@@ -770,7 +920,6 @@
                 ctx.fillStyle = '#fff'; ctx.fillText(s.text, cZone.x + 2, cZone.y + s.yOff + s.h / 2 + 5);
             }
             if (GAME.state === 'aiming') {
-                // ★ C존 세로 배경 안내선 길이를 동적으로 호환 (maxY - minY)
                 const vX = GAME.cameraX + 350; ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(vX, cZone.minY, 7, cZone.maxY - cZone.minY);
                 for (let i = 0; i < cZone.segments.length; i++) { const s = cZone.segments[i]; ctx.fillStyle = s.color; ctx.fillRect(vX, cZone.y + s.yOff, 7, s.h); }
             }
@@ -848,7 +997,7 @@
 
         let currentShopTab = 'cannon';
         function changeShopTab(tab) { currentShopTab = tab; document.querySelectorAll('.shop-tabs button').forEach(b => b.classList.remove('active')); document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active'); renderShopUI(); }
-        function renderShopUI() { 
+        function renderShopUI() {
             document.getElementById('shopGold').textContent = `보유 재화: 💰 ${GAME.gold}`; const con = document.getElementById('shopListContainer'); con.innerHTML = '';
             if (currentShopTab === 'cannon') {
                 if (!player.slot2Unlocked) { const d = document.createElement('div'); d.className = 'shop-item'; d.innerHTML = `<div class="item-name">🔒 추가 대포 슬롯 2</div><div class="item-desc">해금비용: 1000G</div><div class="btn-group"><button onclick="buySlot2()" style="background:#e67e22;width:100%;">슬롯 해금 (1000G)</button></div>`; con.appendChild(d); }
@@ -869,14 +1018,16 @@
         let dragStartY = 0, initialAngle = -45;
 
         canvas.addEventListener('pointerdown', e => {
-            // ★ 조기 입력 허용 로직: 복귀 중 터치하면 즉시 턴 계산 후 조작 돌입
             if (GAME.state === 'returning') {
                 GAME.cameraX = 0;
                 GAME.state = 'aiming';
-                if (!GAME.turnBonusAwarded) GAME.turn++;
-                GAME.turnBonusAwarded = false; 
                 
-                if (GAME.turn > GAME.maxTurns) {
+                // 조기 탭 시에도 턴 계산 확실하게 내림차순 처리
+                if (!GAME.turnBonusAwarded) GAME.turn--;
+                GAME.turnBonusAwarded = false;
+
+                // 턴이 0이 되면 사망(게임 종료)
+                if (GAME.turn <= 0) {
                     endGame();
                     return;
                 } else {
