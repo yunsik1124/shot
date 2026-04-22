@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Project Color-Shot v8.6 (Ultimate Optimization & Hit Fix)</title>
+    <title>Project Color-Shot v8.8 (Extreme Optimized)</title>
     <style>
-        /* 🎮 [기획 최적화] 모바일 꽉 찬 화면 및 주소창 잘림 방지 (100dvh) */
+        /* 🎮 모바일 꽉 찬 화면 및 주소창 잘림 방지 */
         body {
             margin: 0;
             padding: 0;
@@ -21,7 +21,7 @@
             overflow: hidden;
         }
 
-        /* ★ [성능/비율 최적화] 하드웨어 가속(GPU) 강제 활성화 및 그림자 제거 */
+        /* ★ 하드웨어 가속(GPU) 강제 활성화 */
         #game-container {
             position: relative;
             width: 100%;
@@ -39,7 +39,7 @@
             display: block;
             width: 100%;
             height: 100%;
-            transform: translateZ(0); /* 캔버스 GPU 가속 */
+            transform: translateZ(0);
         }
 
         .ui-layer {
@@ -69,7 +69,7 @@
             font-weight: bold;
         }
 
-        /* 🎮 [UX] 아이템 버튼 */
+        /* 🎮 UX 아이템 버튼 */
         #itemBtn {
             position: absolute;
             bottom: 25px;
@@ -107,7 +107,7 @@
                 border-color: #fff;
             }
 
-        /* ★ [최적화] 단색 가상 스틱 */
+        /* 단색 가상 스틱 */
         .virtual-stick-guide {
             position: absolute;
             bottom: 105px;
@@ -130,7 +130,7 @@
                 content: '';
                 width: 34px;
                 height: 34px;
-                background: #444; /* 단색 노브 */
+                background: #444;
                 border-radius: 50%;
                 border: 2px solid #222;
             }
@@ -267,6 +267,7 @@
             display: flex;
             justify-content: center;
             gap: 10px;
+            flex-wrap: wrap;
         }
 
         .ranking-board {
@@ -306,9 +307,7 @@
                 </span>
             </div>
             <div class="wind-indicator" id="uiWind">🌬️ 풍속: 0</div>
-
             <div class="virtual-stick-guide"></div>
-
             <div id="itemBtn" onclick="useItem()">
                 <span>정지/x2</span>
                 <span id="itemCount" style="color:#ffeaa7;">0/3</span>
@@ -321,6 +320,7 @@
             <div class="menu-btn-group">
                 <button onclick="startGame()" style="padding: 15px; font-size:18px;">게임 시작</button>
                 <button onclick="openShop()" style="background-color: #9b59b6; padding: 15px;">상점 (무기/타겟/아이템)</button>
+                <button onclick="resetGameData()" style="background-color: #e74c3c; padding: 10px; margin-top: 20px;">데이터 초기화</button>
             </div>
         </div>
 
@@ -350,53 +350,34 @@
 
     <script>
         const canvas = document.getElementById('gameCanvas');
-        // ★ 최적화: alpha false 처리로 모바일 브라우저의 배경 합성 연산 생략
-        const ctx = canvas.getContext('2d', { alpha: false });
+        const ctx = canvas.getContext('2d', { alpha: false }); // 알파 채널 블렌딩 강제 비활성화(최적화)
         const gameContainer = document.getElementById('game-container');
 
         const ASSETS = { images: {}, sounds: {} };
 
-        function loadImage(key, path) {
-            let img = new Image(); img.src = `img/${path}`; ASSETS.images[key] = img;
-        }
-        function loadSound(key, path) {
-            let audio = new Audio(`sound/${path}`); ASSETS.sounds[key] = audio;
-        }
+        function loadImage(key, path) { let img = new Image(); img.src = `img/${path}`; ASSETS.images[key] = img; }
+        function loadSound(key, path) { let audio = new Audio(`sound/${path}`); ASSETS.sounds[key] = audio; }
 
-        loadImage('bg', 'bg_stage_01.png');
-        loadImage('cloud', 'cloud.png');
-        loadImage('ground_start', 'ground_start.png');
-        loadImage('ground_end', 'ground_end.png');
-        loadImage('cannon_base', 'cannon_base.png');
-        loadImage('cannon_barrel', 'cannon_barrel.png');
-        loadImage('b_tile', 'b_obstacle_tile.png');
-        loadImage('b_tile_dmg', 'b_obstacle_dmg.png');
-        loadImage('panel_b', 'panel_buff_b.png');
-        loadImage('panel_c', 'panel_buff_c.png');
-        loadImage('target', 'target_rock.png');
-        loadImage('target_dmg', 'target_rock_dmg.png');
-        loadImage('core_s1', 'target_core_s1.png');
-        loadImage('core_s2', 'target_core_s2.png');
-        loadImage('core_s3', 'target_core_s3.png');
-        loadImage('core_s4', 'target_core_s4.png');
-        loadImage('core_s5', 'target_core_s5.png');
+        loadImage('bg', 'bg_stage_01.png'); loadImage('cloud', 'cloud.png');
+        loadImage('ground_start', 'ground_start.png'); loadImage('ground_end', 'ground_end.png');
+        loadImage('cannon_base', 'cannon_base.png'); loadImage('cannon_barrel', 'cannon_barrel.png');
+        loadImage('b_tile', 'b_obstacle_tile.png'); loadImage('b_tile_dmg', 'b_obstacle_dmg.png');
+        loadImage('panel_b', 'panel_buff_b.png'); loadImage('panel_c', 'panel_buff_c.png');
+        loadImage('target', 'target_rock.png'); loadImage('target_dmg', 'target_rock_dmg.png');
+        loadImage('core_s1', 'target_core_s1.png'); loadImage('core_s2', 'target_core_s2.png');
+        loadImage('core_s3', 'target_core_s3.png'); loadImage('core_s4', 'target_core_s4.png'); loadImage('core_s5', 'target_core_s5.png');
 
-        loadSound('bgm', 'bgm_battle_loop.mp3');
-        loadSound('shoot', 'sfx_shoot_normal.wav');
-        loadSound('hit_rock', 'sfx_hit_rock.wav');
-        loadSound('break_rock', 'sfx_break_rock.wav');
-        loadSound('hit_metal', 'sfx_hit_metal.wav');
-        loadSound('break_metal', 'sfx_break_metal.wav');
-        loadSound('buff', 'sfx_pass_buff.wav');
-        loadSound('gold', 'sfx_coin_get.wav');
-        loadSound('item', 'sfx_item_tactical.wav');
+        loadSound('bgm', 'bgm_battle_loop.mp3'); loadSound('shoot', 'sfx_shoot_normal.wav');
+        loadSound('hit_rock', 'sfx_hit_rock.wav'); loadSound('break_rock', 'sfx_break_rock.wav');
+        loadSound('hit_metal', 'sfx_hit_metal.wav'); loadSound('break_metal', 'sfx_break_metal.wav');
+        loadSound('buff', 'sfx_pass_buff.wav'); loadSound('gold', 'sfx_coin_get.wav'); loadSound('item', 'sfx_item_tactical.wav');
 
         function playSound(key) {
             let audio = ASSETS.sounds[key];
             if (audio && audio.readyState >= 2) {
                 let clone = audio.cloneNode();
                 if (key === 'bgm') { clone.loop = true; clone.volume = 0.4; }
-                clone.play().catch(e => { /* 무시 */ });
+                clone.play().catch(e => { });
             }
         }
 
@@ -407,7 +388,6 @@
         const PHYSICS = { gravity: 0.05, windMulti: 0.0025 };
         let floatingTexts = []; let projectiles = []; let windParticles = []; let hitParticles = []; let clouds = [];
 
-        // ★ 무기 컬러: 화이트, 레드, 블루 단색 지정
         const CANNONS = {
             normal: { id: 'normal', name: "노멀 대포", baseDmg: 100, radius: 12, color: "#FFFFFF", unlockCost: 0 },
             sniper: { id: 'sniper', name: "스나이퍼 대포", baseDmg: 140, radius: 5, color: "#FF3333", unlockCost: 500 },
@@ -424,10 +404,17 @@
 
         const player = {
             x: 50, y: 550, angle: -45, power: 10, powerDir: 1, isDragging: false,
-            equipped: 'normal',
+            slot2Unlocked: false,
+            equipped: { slot1: 'normal', slot2: null },
             cannons: { normal: { level: 1, unlocked: true }, sniper: { level: 1, unlocked: false }, buster: { level: 1, unlocked: false } },
             targetEquipped: 'size1', targets: { size1: true, size2: false, size3: false, size4: false, size5: false },
             items: { tactical: 3 }
+        };
+
+        // ★ [좌표 스왑 완료] 1번 슬롯(좌측), 2번 슬롯(우측)으로 교정
+        const SLOTS = {
+            slot1: { x: 25, y: 575 },
+            slot2: { x: 75, y: 525 }
         };
 
         let currentShopTab = 'cannon';
@@ -441,25 +428,15 @@
             const currentRadius = TARGET_TYPES[player.targetEquipped].weakRadius;
             const startX = weakPoint.x + currentRadius - 5;
 
-            for (let c = 0; c < 5; c++) {
-                for (let r = 0; r < 10; r++) {
-                    targetBlocks.push({ x: startX + c * 20, y: weakPoint.y - 120 + r * 20, w: 20, h: 20, hp: getRandomHP() });
-                }
-            }
+            for (let c = 0; c < 5; c++) { for (let r = 0; r < 10; r++) { targetBlocks.push({ x: startX + c * 20, y: weakPoint.y - 120 + r * 20, w: 20, h: 20, hp: getRandomHP() }); } }
             const topY = weakPoint.y - 120;
-            for (let c = 0; c < 12; c++) {
-                targetBlocks.push({ x: (startX - 180) + c * 20, y: topY, w: 20, h: 20, hp: getRandomHP() });
-            }
-            for (let c = 0; c < 3; c++) {
-                targetBlocks.push({ x: weakPoint.x + (currentRadius / 2) + c * 20, y: weakPoint.y - 10, w: 20, h: 20, hp: getRandomHP() });
-            }
+            for (let c = 0; c < 12; c++) { targetBlocks.push({ x: (startX - 180) + c * 20, y: topY, w: 20, h: 20, hp: getRandomHP() }); }
+            for (let c = 0; c < 3; c++) { targetBlocks.push({ x: weakPoint.x + (currentRadius / 2) + c * 20, y: weakPoint.y - 10, w: 20, h: 20, hp: getRandomHP() }); }
         }
 
         function initClouds() {
             clouds = [];
-            for (let i = 0; i < 6; i++) {
-                clouds.push({ x: Math.random() * GAME.worldWidth, y: Math.random() * 200 + 20, w: 80 + Math.random() * 60, h: 40 + Math.random() * 30, baseSpeed: (Math.random() * 0.3 + 0.1) });
-            }
+            for (let i = 0; i < 6; i++) { clouds.push({ x: Math.random() * GAME.worldWidth, y: Math.random() * 200 + 20, w: 80 + Math.random() * 60, h: 40 + Math.random() * 30, baseSpeed: (Math.random() * 0.3 + 0.1) }); }
         }
 
         function loadLocalData() {
@@ -472,21 +449,24 @@
             GAME.nickname = savedName;
             if (localStorage.getItem("colorShot_gold")) GAME.gold = parseInt(localStorage.getItem("colorShot_gold"));
             if (localStorage.getItem("colorShot_cannons")) player.cannons = JSON.parse(localStorage.getItem("colorShot_cannons"));
-            if (localStorage.getItem("colorShot_equipped")) player.equipped = localStorage.getItem("colorShot_equipped");
+            if (localStorage.getItem("colorShot_equipped")) {
+                let eq = localStorage.getItem("colorShot_equipped");
+                if (eq.startsWith("{")) player.equipped = JSON.parse(eq); else player.equipped = { slot1: eq, slot2: null };
+            }
+            if (localStorage.getItem("colorShot_slot2Unlocked")) player.slot2Unlocked = localStorage.getItem("colorShot_slot2Unlocked") === 'true';
             if (localStorage.getItem("colorShot_targets")) player.targets = JSON.parse(localStorage.getItem("colorShot_targets"));
             if (localStorage.getItem("colorShot_targetEquipped")) player.targetEquipped = localStorage.getItem("colorShot_targetEquipped");
             if (localStorage.getItem("colorShot_items")) player.items = JSON.parse(localStorage.getItem("colorShot_items"));
         }
 
         function saveLocalData() {
-            localStorage.setItem("colorShot_gold", GAME.gold);
-            localStorage.setItem("colorShot_cannons", JSON.stringify(player.cannons));
-            localStorage.setItem("colorShot_equipped", player.equipped);
-            localStorage.setItem("colorShot_targets", JSON.stringify(player.targets));
-            localStorage.setItem("colorShot_targetEquipped", player.targetEquipped);
-            localStorage.setItem("colorShot_items", JSON.stringify(player.items));
-            updateUI();
+            localStorage.setItem("colorShot_gold", GAME.gold); localStorage.setItem("colorShot_cannons", JSON.stringify(player.cannons));
+            localStorage.setItem("colorShot_equipped", JSON.stringify(player.equipped)); localStorage.setItem("colorShot_slot2Unlocked", player.slot2Unlocked);
+            localStorage.setItem("colorShot_targets", JSON.stringify(player.targets)); localStorage.setItem("colorShot_targetEquipped", player.targetEquipped);
+            localStorage.setItem("colorShot_items", JSON.stringify(player.items)); updateUI();
         }
+
+        function resetGameData() { if (confirm("모든 게임 데이터가 초기화됩니다.\n초기화 하시겠습니까?")) { localStorage.clear(); location.reload(); } }
 
         function generateBZone() {
             bZone.segments = []; bZone.obstacleBlocks = [];
@@ -498,7 +478,8 @@
         }
 
         function initWindParticles() {
-            windParticles = []; let count = Math.abs(GAME.wind) * 8;
+            windParticles = [];
+            let count = Math.abs(GAME.wind) * 3; // ★ [최적화] 파티클 생성 수 60% 감소
             for (let i = 0; i < count; i++) { windParticles.push({ x: Math.random() * GAME.worldWidth, y: Math.random() * 640, speed: (Math.random() * 2 + 1), length: Math.random() * 15 + 5 }); }
         }
 
@@ -506,23 +487,16 @@
 
         function createHitParticles(x, y, mainColor) {
             const colors = [mainColor, "#ecf0f1", "#bdc3c7"];
-            for (let i = 0; i < 15; i++) { hitParticles.push({ x: x, y: y, vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8 - 2, life: 30 + Math.random() * 20, color: colors[Math.floor(Math.random() * colors.length)], size: Math.random() * 4 + 2 }); }
+            for (let i = 0; i < 12; i++) { hitParticles.push({ x: x, y: y, vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8 - 2, life: 30 + Math.random() * 20, color: colors[Math.floor(Math.random() * colors.length)], size: Math.random() * 4 + 2 }); }
         }
 
         function useItem() {
             if (GAME.state !== 'aiming' || player.items.tactical <= 0) return;
-
             if (GAME.itemActive) {
-                GAME.itemActive = false;
-                initTurnEnvironment();
-                addFloatingText(player.x, player.y - 40, "아이템 취소", "#fff");
+                GAME.itemActive = false; initTurnEnvironment(); addFloatingText(player.x, player.y - 40, "아이템 취소", "#fff");
             } else {
-                GAME.itemActive = true;
-                GAME.wind = 0;
-                document.getElementById('uiWind').innerText = `🌬️ 날씨: 멈춤 (아이템 대기 중)`;
-                initWindParticles();
-                addFloatingText(player.x, player.y - 40, "정지 & x2 활성!", "#f39c12");
-                playSound('item');
+                GAME.itemActive = true; GAME.wind = 0; document.getElementById('uiWind').innerText = `🌬️ 날씨: 멈춤 (아이템 대기 중)`;
+                initWindParticles(); addFloatingText(player.x, player.y - 40, "정지 & x2 활성!", "#f39c12"); playSound('item');
             }
             updateUI();
         }
@@ -540,106 +514,94 @@
             document.getElementById('shopGold').innerText = `보유 재화: 💰 ${GAME.gold}`;
             const container = document.getElementById('shopListContainer'); container.innerHTML = '';
             if (currentShopTab === 'cannon') {
+                if (!player.slot2Unlocked) {
+                    let div = document.createElement('div'); div.className = `shop-item`;
+                    div.innerHTML = `<div class="item-name">🔒 추가 대포 슬롯 2</div><div class="item-desc">해금비용: 1000G</div><div class="btn-group"><button onclick="buySlot2()" style="background:#e67e22; width: 100%;">슬롯 해금 (1000G)</button></div>`;
+                    container.appendChild(div);
+                }
                 Object.keys(CANNONS).forEach(key => {
-                    let cData = CANNONS[key]; let pData = player.cannons[key]; let isEquipped = (player.equipped === key); let cost = pData.level * 100;
+                    let cData = CANNONS[key]; let pData = player.cannons[key];
+                    let isEq1 = (player.equipped.slot1 === key); let isEq2 = (player.equipped.slot2 === key);
+                    let cost = pData.level * 100;
                     let div = document.createElement('div'); div.className = `shop-item ${!pData.unlocked ? 'locked' : ''}`;
                     let title = pData.unlocked ? `${cData.name} (Lv.${pData.level})` : `🔒 ${cData.name}`;
-                    if (isEquipped) title += " <span style='color:#2ecc71;'>[장착중]</span>";
+                    if (isEq1) title += " <span style='color:#2ecc71;'>[슬롯 1]</span>"; if (isEq2) title += " <span style='color:#3498db;'>[슬롯 2]</span>";
                     let html = `<div class="item-name">${title}</div><div class="item-desc">기본 데미지: ${cData.baseDmg} / ${!pData.unlocked ? `해금비용: ${cData.unlockCost}G` : '해금완료'}</div><div class="btn-group">`;
                     if (!pData.unlocked) html += `<button onclick="buyFeature('cannon', '${key}', ${cData.unlockCost})">해금하기</button>`;
                     else {
-                        if (!isEquipped) html += `<button onclick="equipFeature('cannon', '${key}')" style="background:#27ae60;">장착하기</button>`;
-                        if (pData.level < 10) html += `<button onclick="upgradeCannon('${key}', ${cost})">강화 (${cost}G)</button>`;
-                        else html += `<button style="background:#555;" disabled>MAX LV</button>`;
+                        if (!isEq1) html += `<button onclick="equipCannon('${key}', 'slot1')" style="background:#27ae60;">숫자 1 장착</button>`;
+                        if (player.slot2Unlocked && !isEq2) html += `<button onclick="equipCannon('${key}', 'slot2')" style="background:#2980b9;">숫자 2 장착</button>`;
+                        else if (!player.slot2Unlocked) html += `<button style="background:#555;" disabled>숫자 2 잠김</button>`;
+                        if (pData.level < 10) html += `<button onclick="upgradeCannon('${key}', ${cost})">강화 (${cost}G)</button>`; else html += `<button style="background:#555;" disabled>MAX LV</button>`;
                     }
                     html += `</div>`; div.innerHTML = html; container.appendChild(div);
                 });
             } else if (currentShopTab === 'target') {
                 Object.keys(TARGET_TYPES).forEach(key => {
-                    let tData = TARGET_TYPES[key]; let isUnlocked = player.targets[key]; let isEquipped = (player.targetEquipped === key);
-                    let div = document.createElement('div'); div.className = `shop-item ${!isUnlocked ? 'locked' : ''}`;
-                    let title = isUnlocked ? `${tData.name}` : `🔒 ${tData.name}`;
-                    if (isEquipped) title += " <span style='color:#2ecc71;'>[장착중]</span>";
-                    let html = `<div class="item-name">${title}</div><div class="item-desc">약점 반경: ${tData.weakRadius}px<br>${!isUnlocked ? `구매: ${tData.cost}G` : '구매 완료'}</div><div style="margin:10px auto; width:${tData.weakRadius * 2}px; height:${tData.weakRadius * 2}px; background:#8a2be2; border:2px solid #ff00ff; border-radius:50%;"></div><div class="btn-group">`;
-                    if (!isUnlocked) html += `<button onclick="buyFeature('target', '${key}', ${tData.cost})">구매하기</button>`;
-                    else if (!isEquipped) html += `<button onclick="equipFeature('target', '${key}')" style="background:#27ae60;">장착하기</button>`;
+                    let tData = TARGET_TYPES[key]; let isUnl = player.targets[key]; let isEq = (player.targetEquipped === key);
+                    let div = document.createElement('div'); div.className = `shop-item ${!isUnl ? 'locked' : ''}`;
+                    let title = isUnl ? `${tData.name}` : `🔒 ${tData.name}`; if (isEq) title += " <span style='color:#2ecc71;'>[장착중]</span>";
+                    let html = `<div class="item-name">${title}</div><div class="item-desc">약점 반경: ${tData.weakRadius}px<br>${!isUnl ? `구매: ${tData.cost}G` : '구매 완료'}</div><div style="margin:10px auto; width:${tData.weakRadius * 2}px; height:${tData.weakRadius * 2}px; background:#8a2be2; border-radius:50%;"></div><div class="btn-group">`;
+                    if (!isUnl) html += `<button onclick="buyFeature('target', '${key}', ${tData.cost})">구매하기</button>`; else if (!isEq) html += `<button onclick="equipFeature('target', '${key}')" style="background:#27ae60;">장착하기</button>`;
                     html += `</div>`; div.innerHTML = html; container.appendChild(div);
                 });
             } else if (currentShopTab === 'item') {
                 let div = document.createElement('div'); div.className = `shop-item`;
                 let html = `<div class="item-name">전술 아이템 (정지+투사체x2)</div><div class="item-desc">현재 소지: ${player.items.tactical} / 3</div><div class="btn-group">`;
-                if (player.items.tactical < 3) html += `<button onclick="buyItem(300)">구매 (300G)</button>`;
-                else html += `<button style="background:#555;" disabled>최대 소지 한도 초과</button>`;
+                if (player.items.tactical < 3) html += `<button onclick="buyItem(300)">구매 (300G)</button>`; else html += `<button style="background:#555;" disabled>최대 소지 한도 초과</button>`;
                 html += `</div>`; div.innerHTML = html; container.appendChild(div);
             }
         }
 
+        function buySlot2() { if (GAME.gold >= 1000) { GAME.gold -= 1000; player.slot2Unlocked = true; saveLocalData(); renderShopUI(); } else alert("재화가 부족합니다!"); }
         function buyFeature(type, key, cost) { if (GAME.gold >= cost) { GAME.gold -= cost; if (type === 'cannon') player.cannons[key].unlocked = true; if (type === 'target') player.targets[key] = true; saveLocalData(); renderShopUI(); } else alert("재화가 부족합니다!"); }
-        function equipFeature(type, key) { if (type === 'cannon') player.equipped = key; if (type === 'target') player.targetEquipped = key; saveLocalData(); renderShopUI(); }
+        function equipFeature(type, key) { if (type === 'target') player.targetEquipped = key; saveLocalData(); renderShopUI(); }
+        function equipCannon(key, slotKey) {
+            if (slotKey === 'slot1' && player.equipped.slot2 === key) player.equipped.slot2 = null;
+            if (slotKey === 'slot2' && player.equipped.slot1 === key) player.equipped.slot1 = null;
+            player.equipped[slotKey] = key; saveLocalData(); renderShopUI();
+        }
         function upgradeCannon(key, cost) { if (GAME.gold >= cost) { GAME.gold -= cost; player.cannons[key].level += 1; saveLocalData(); renderShopUI(); } else alert("재화가 부족합니다!"); }
         function buyItem(cost) { if (GAME.gold >= cost) { GAME.gold -= cost; player.items.tactical += 1; saveLocalData(); renderShopUI(); } else alert("재화가 부족합니다!"); }
         function openShop() { document.getElementById('menuUI').style.display = 'none'; document.getElementById('shopPopup').style.display = 'flex'; renderShopUI(); }
         function closeShop() { document.getElementById('shopPopup').style.display = 'none'; document.getElementById('menuUI').style.display = 'flex'; }
 
-        // 스틱 조작 로직
         let dragStartY = 0; let initialAngle = -45;
         canvas.addEventListener('pointerdown', (e) => {
             if (GAME.state !== 'aiming') return;
-            player.isDragging = true; gameContainer.classList.add('dragging');
-            dragStartY = e.clientY; initialAngle = player.angle; player.power = 10; player.powerDir = 1;
+            player.isDragging = true; gameContainer.classList.add('dragging'); dragStartY = e.clientY; initialAngle = player.angle; player.power = 10; player.powerDir = 1;
         });
-        canvas.addEventListener('pointermove', (e) => {
-            if (!player.isDragging) return;
-            let deltaY = dragStartY - e.clientY;
-            player.angle = Math.max(-90, Math.min(0, initialAngle - (deltaY * 0.5)));
-        });
-        canvas.addEventListener('pointerup', () => {
-            if (!player.isDragging) return;
-            player.isDragging = false; gameContainer.classList.remove('dragging');
-            fireProjectile();
-        });
+        canvas.addEventListener('pointermove', (e) => { if (!player.isDragging) return; let deltaY = dragStartY - e.clientY; player.angle = Math.max(-90, Math.min(0, initialAngle - (deltaY * 0.5))); });
+        canvas.addEventListener('pointerup', () => { if (!player.isDragging) return; player.isDragging = false; gameContainer.classList.remove('dragging'); fireProjectile(); });
 
         function init() { loadLocalData(); document.getElementById('menuNickname').innerText = `접속 계정: ${GAME.nickname}`; requestAnimationFrame(gameLoop); }
 
         function startGame() {
-            playSound('bgm');
-            document.getElementById('menuUI').style.display = 'none'; document.getElementById('inGameUI').style.display = 'block';
+            playSound('bgm'); document.getElementById('menuUI').style.display = 'none'; document.getElementById('inGameUI').style.display = 'block';
             GAME.turn = 1; GAME.totalDamage = 0; GAME.cameraX = 0; GAME.itemActive = false;
             initClouds(); initTarget(); generateBZone(); initTurnEnvironment();
         }
 
         function initTurnEnvironment() {
             projectiles = []; hitParticles = []; GAME.turnWaiting = false; GAME.state = 'aiming';
-
-            if (!GAME.itemActive) {
-                GAME.wind = Math.floor(Math.random() * 11) - 5;
-            } else {
-                GAME.wind = 0;
-            }
-
+            if (!GAME.itemActive) GAME.wind = Math.floor(Math.random() * 11) - 5; else GAME.wind = 0;
             let windText = GAME.wind === 0 ? "고요함" : (GAME.wind > 0 ? `우풍 ${GAME.wind}` : `좌풍 ${Math.abs(GAME.wind)}`);
-            document.getElementById('uiWind').innerText = `🌬️ 날씨: ${windText}`;
-            initWindParticles(); updateUI();
+            document.getElementById('uiWind').innerText = `🌬️ 날씨: ${windText}`; initWindParticles(); updateUI();
         }
 
         function fireProjectile() {
             GAME.state = 'flying'; triggerShake(5, 8); playSound('shoot');
-            let cData = CANNONS[player.equipped]; let speedMult = player.power * 0.45;
-
-            let shotCount = 1;
-            if (GAME.itemActive) {
-                shotCount = 2;
-                player.items.tactical--;
-                GAME.itemActive = false;
-            }
-
-            for (let i = 0; i < shotCount; i++) {
-                let offsetAngle = (i === 1) ? 5 : 0;
-                let rad = (player.angle + offsetAngle) * Math.PI / 180;
-                let startX = player.x + Math.cos(rad) * 40; let startY = player.y + Math.sin(rad) * 40;
-                projectiles.push({ x: startX, y: startY, vx: Math.cos(rad) * speedMult, vy: Math.sin(rad) * speedMult, active: true, radius: cData.radius, bMult: 1, bType: 'none', gMult: 1, passedBZone: false, passedCZone: false });
-            }
-
+            let shotCount = 1; if (GAME.itemActive) { shotCount = 2; player.items.tactical--; GAME.itemActive = false; }
+            ['slot1', 'slot2'].forEach(slotKey => {
+                if (slotKey === 'slot2' && !player.slot2Unlocked) return;
+                let cId = player.equipped[slotKey]; if (!cId) return;
+                let cData = CANNONS[cId]; let slotPos = SLOTS[slotKey]; let speedMult = player.power * 0.45;
+                for (let i = 0; i < shotCount; i++) {
+                    let offsetAngle = (i === 1) ? 5 : 0; let rad = (player.angle + offsetAngle) * Math.PI / 180;
+                    let startX = slotPos.x + Math.cos(rad) * 40; let startY = slotPos.y + Math.sin(rad) * 40;
+                    projectiles.push({ x: startX, y: startY, vx: Math.cos(rad) * speedMult, vy: Math.sin(rad) * speedMult, active: true, radius: cData.radius, bMult: 1, bType: 'none', gMult: 1, passedBZone: false, passedCZone: false, baseDmg: cData.baseDmg, pLevel: player.cannons[cId].level, color: cData.color });
+                }
+            });
             saveLocalData(); updateUI();
         }
 
@@ -659,12 +621,8 @@
             document.getElementById('uiNickname').innerText = GAME.nickname; document.getElementById('uiTurn').innerText = `Turn: ${GAME.turn}/${GAME.maxTurns}`;
             document.getElementById('uiScore').innerText = `점수: ${GAME.totalDamage}`; document.getElementById('uiGold').innerText = `💰 ${GAME.gold}`;
             let iBtn = document.getElementById('itemBtn'); document.getElementById('itemCount').innerText = `${player.items.tactical}/3`;
-
-            if (GAME.itemActive) iBtn.classList.add('active');
-            else iBtn.classList.remove('active');
-
-            if (player.items.tactical === 0 || GAME.state !== 'aiming') iBtn.classList.add('disabled');
-            else iBtn.classList.remove('disabled');
+            if (GAME.itemActive) iBtn.classList.add('active'); else iBtn.classList.remove('active');
+            if (player.items.tactical === 0 || GAME.state !== 'aiming') iBtn.classList.add('disabled'); else iBtn.classList.remove('disabled');
         }
 
         function gameLoop() { updatePhysics(); drawScene(); requestAnimationFrame(gameLoop); }
@@ -673,20 +631,18 @@
             if (CAMERA.shakeFrames > 0) CAMERA.shakeFrames--;
             bZone.x += bZone.speed * bZone.dir; if (bZone.x < bZone.minX || bZone.x > bZone.maxX) bZone.dir *= -1;
             cZone.y += cZone.speed * cZone.dir; if (cZone.y < cZone.minY || cZone.y + cZone.height > cZone.maxY) cZone.dir *= -1;
-
             floatingTexts.forEach(ft => { ft.y -= 1; ft.life--; }); floatingTexts = floatingTexts.filter(ft => ft.life > 0);
-            hitParticles.forEach(p => { p.vy += PHYSICS.gravity; p.x += p.vx; p.y += p.vy; p.life--; }); hitParticles = hitParticles.filter(p => p.life > 0);
+
+            // ★ [최적화] 파티클 수명 기반 물리 연산 (투명도 대신 사이즈 감소 유도)
+            hitParticles.forEach(p => { p.vy += PHYSICS.gravity; p.x += p.vx; p.y += p.vy; p.life--; });
+            hitParticles = hitParticles.filter(p => p.life > 0);
 
             clouds.forEach(c => {
-                let windEffect = (GAME.wind * 0.15) * c.baseSpeed;
-                c.x += windEffect;
-                if (c.x > GAME.worldWidth + 150) c.x = -150;
-                else if (c.x < -150) c.x = GAME.worldWidth + 150;
+                let windEffect = (GAME.wind * 0.15) * c.baseSpeed; c.x += windEffect;
+                if (c.x > GAME.worldWidth + 150) c.x = -150; else if (c.x < -150) c.x = GAME.worldWidth + 150;
             });
 
-            if (player.isDragging) {
-                if (player.powerDir > 0) { player.power += 0.075; if (player.power >= 18) { player.power = 18; player.powerDir = 0; } }
-            }
+            if (player.isDragging) { if (player.powerDir > 0) { player.power += 0.075; if (player.power >= 18) { player.power = 18; player.powerDir = 0; } } }
 
             if (GAME.state === 'returning') {
                 GAME.cameraX -= 12;
@@ -695,15 +651,12 @@
 
             if (GAME.state === 'flying') {
                 let activeCount = 0; let leaderX = 0;
-
                 for (let i = 0; i < projectiles.length; i++) {
                     let p = projectiles[i]; if (!p.active) continue;
                     activeCount++; if (p.x > leaderX) leaderX = p.x;
-
                     p.vy += PHYSICS.gravity; p.vx += (GAME.wind * PHYSICS.windMulti); p.x += p.vx; p.y += p.vy;
                     if (p.y > canvas.height || p.x > GAME.worldWidth) { p.active = false; continue; }
 
-                    // B-Zone (장애물/버프 존) 판정
                     if (p.x + p.radius > bZone.x && p.x - p.radius < bZone.x + bZone.width) {
                         let hitObstacle = false;
                         for (let j = 0; j < bZone.obstacleBlocks.length; j++) {
@@ -713,37 +666,24 @@
                             if ((distX * distX) + (distY * distY) <= (p.radius * p.radius)) {
                                 hitObstacle = true; ob.hp -= 1; p.active = false;
                                 playSound('hit_metal'); triggerShake(6, 10);
-                                if (ob.hp <= 0) {
-                                    addFloatingText(obX, p.y, "파괴됨!", "#e74c3c"); createHitParticles(p.x, p.y, "#7f8c8d");
-                                    playSound('break_metal'); bZone.obstacleBlocks.splice(j, 1);
-                                } else {
-                                    addFloatingText(obX, p.y, "흠집!", "#f39c12"); createHitParticles(p.x, p.y, "#95a5a6");
-                                }
+                                if (ob.hp <= 0) { addFloatingText(obX, p.y, "파괴됨!", "#e74c3c"); createHitParticles(p.x, p.y, "#7f8c8d"); playSound('break_metal'); bZone.obstacleBlocks.splice(j, 1); }
+                                else { addFloatingText(obX, p.y, "흠집!", "#f39c12"); createHitParticles(p.x, p.y, "#95a5a6"); }
                                 break;
                             }
                         }
-
                         if (!p.active) continue;
-
                         if (!hitObstacle && !p.passedBZone) {
                             let hitSegment = bZone.segments.find(s => p.y >= s.y && p.y <= s.y + s.height);
                             if (hitSegment) {
                                 p.passedBZone = true; playSound('buff');
                                 if (hitSegment.id.includes('qty')) {
-                                    let cloneCount = hitSegment.id === 'qty4' ? 4 : 2;
-                                    addFloatingText(bZone.x, p.y - 20, hitSegment.text, hitSegment.color);
-                                    for (let j = 1; j < cloneCount; j++) {
-                                        projectiles.push({ x: p.x, y: p.y, vx: p.vx + (Math.random() - 0.5) * 1.5, vy: p.vy + (Math.random() - 0.5) * 1.5, active: true, radius: p.radius, bMult: p.bMult, bType: p.bType, gMult: p.gMult, passedBZone: true, passedCZone: p.passedCZone });
-                                    }
-                                } else {
-                                    p.bMult = parseInt(hitSegment.id.replace(/[^0-9]/g, '')); p.bType = 'dmg';
-                                    addFloatingText(bZone.x, p.y - 20, hitSegment.text, hitSegment.color);
-                                }
+                                    let cloneCount = hitSegment.id === 'qty4' ? 4 : 2; addFloatingText(bZone.x, p.y - 20, hitSegment.text, hitSegment.color);
+                                    for (let j = 1; j < cloneCount; j++) { projectiles.push({ x: p.x, y: p.y, vx: p.vx + (Math.random() - 0.5) * 1.5, vy: p.vy + (Math.random() - 0.5) * 1.5, active: true, radius: p.radius, bMult: p.bMult, bType: p.bType, gMult: p.gMult, passedBZone: true, passedCZone: p.passedCZone, baseDmg: p.baseDmg, pLevel: p.pLevel, color: p.color }); }
+                                } else { p.bMult = parseInt(hitSegment.id.replace(/[^0-9]/g, '')); p.bType = 'dmg'; addFloatingText(bZone.x, p.y - 20, hitSegment.text, hitSegment.color); }
                             }
                         }
                     }
 
-                    // C-Zone (골드/수량 증폭 존) 판정
                     if (!p.passedCZone && p.x > cZone.x && p.x < cZone.x + cZone.width && p.y > cZone.y && p.y < cZone.y + cZone.height) {
                         p.passedCZone = true; let relY = p.y - cZone.y;
                         let hitSeg = cZone.segments.find(s => relY >= s.yOff && relY <= s.yOff + s.h);
@@ -752,72 +692,42 @@
                             if (hitSeg.type === 'goldMult') { p.gMult = 2; addFloatingText(cZone.x, p.y - 20, `💰 x2`, "#0f0"); }
                             else if (hitSeg.type === 'qty4') {
                                 addFloatingText(cZone.x, p.y - 20, "C존 개수 x4", hitSeg.color);
-                                for (let j = 1; j < 4; j++) { projectiles.push({ x: p.x, y: p.y, vx: p.vx + (Math.random() - 0.5) * 2, vy: p.vy + (Math.random() - 0.5) * 2, active: true, radius: p.radius, bMult: p.bMult, bType: p.bType, gMult: p.gMult, passedBZone: true, passedCZone: true }); }
+                                for (let j = 1; j < 4; j++) { projectiles.push({ x: p.x, y: p.y, vx: p.vx + (Math.random() - 0.5) * 2, vy: p.vy + (Math.random() - 0.5) * 2, active: true, radius: p.radius, bMult: p.bMult, bType: p.bType, gMult: p.gMult, passedBZone: true, passedCZone: true, baseDmg: p.baseDmg, pLevel: p.pLevel, color: p.color }); }
                             }
                         }
                     }
 
-                    // ★ [최적화] 대포알 뭉침 타격 씹힘 방지 역순 루프 판정
                     let hasHitAnyBlock = false;
                     for (let j = targetBlocks.length - 1; j >= 0; j--) {
                         let b = targetBlocks[j];
-
                         if (p.x > b.x && p.x < b.x + b.w && p.y > b.y && p.y < b.y + b.h) {
-                            p.active = false;
-                            hasHitAnyBlock = true;
-
-                            let cData = CANNONS[player.equipped];
-                            let pLevel = player.cannons[player.equipped].level;
-                            let mult = p.bType === 'dmg' ? p.bMult : 1;
-                            let finalDamage = Math.floor((cData.baseDmg + (pLevel * 10)) * mult);
-
-                            GAME.totalDamage += finalDamage;
-                            GAME.gold += Math.floor(finalDamage / 10) * (p.gMult || 1);
-
-                            playSound('hit_rock');
-                            createHitParticles(p.x, p.y, cData.color);
-                            addFloatingText(p.x, p.y - 15, `🎯 ${finalDamage}`, "#ffff00");
-
-                            b.hp -= 1;
-                            if (b.hp <= 0) {
-                                playSound('break_rock');
-                                targetBlocks.splice(j, 1);
-                            }
-                            saveLocalData();
-                            break; // 하나의 대포알은 하나의 블록만 타격
+                            p.active = false; hasHitAnyBlock = true;
+                            let mult = p.bType === 'dmg' ? p.bMult : 1; let finalDamage = Math.floor((p.baseDmg + (p.pLevel * 10)) * mult);
+                            GAME.totalDamage += finalDamage; GAME.gold += Math.floor(finalDamage / 10) * (p.gMult || 1);
+                            playSound('hit_rock'); createHitParticles(p.x, p.y, p.color); addFloatingText(p.x, p.y - 15, `🎯 ${finalDamage}`, "#ffff00");
+                            b.hp -= 1; if (b.hp <= 0) { playSound('break_rock'); targetBlocks.splice(j, 1); }
+                            saveLocalData(); break;
                         }
                     }
 
-                    // 블록을 안 치고 약점에 맞은 경우
                     if (!hasHitAnyBlock && p.active) {
                         let dist = Math.hypot(p.x - weakPoint.x, p.y - weakPoint.y);
                         let activeTargetRadius = TARGET_TYPES[player.targetEquipped].weakRadius;
-
                         if (dist <= activeTargetRadius) {
                             p.active = false;
-                            let cData = CANNONS[player.equipped];
-                            let pLevel = player.cannons[player.equipped].level;
-                            let mult = p.bType === 'dmg' ? p.bMult : 1;
-                            let finalDamage = Math.floor((cData.baseDmg + (pLevel * 10)) * mult * 2.5);
-
-                            GAME.totalDamage += finalDamage;
-                            GAME.gold += Math.floor(finalDamage / 10) * (p.gMult || 1);
-
-                            triggerShake(15, 15);
-                            createHitParticles(p.x, p.y, cData.color);
-                            addFloatingText(p.x, p.y - 15, `💥 Critical! ${finalDamage}`, "#ff00ff");
+                            let mult = p.bType === 'dmg' ? p.bMult : 1; let finalDamage = Math.floor((p.baseDmg + (p.pLevel * 10)) * mult * 2.5);
+                            GAME.totalDamage += finalDamage; GAME.gold += Math.floor(finalDamage / 10) * (p.gMult || 1);
+                            triggerShake(15, 15); createHitParticles(p.x, p.y, p.color); addFloatingText(p.x, p.y - 15, `💥 Critical! ${finalDamage}`, "#ff00ff");
                             saveLocalData();
                         }
                     }
                 }
-
                 if (activeCount > 0) GAME.cameraX = Math.max(0, Math.min(leaderX - 180, GAME.worldWidth - canvas.width));
                 if (activeCount === 0 && !GAME.turnWaiting) { GAME.turnWaiting = true; setTimeout(() => { GAME.state = 'returning'; }, 1000); }
             }
         }
 
         function drawScene() {
-            // ★ [최적화] 캔버스 물리적 초기화로 잔상 완벽 제거
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.fillStyle = "#e0e7ee";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -837,22 +747,16 @@
             let cloudImg = ASSETS.images.cloud;
             ctx.save(); let cloudParallaxX = GAME.cameraX * 0.5; ctx.translate(GAME.cameraX - cloudParallaxX, 0);
             clouds.forEach(c => {
-                if (cloudImg && cloudImg.complete && cloudImg.naturalWidth > 0) {
-                    ctx.drawImage(cloudImg, c.x, c.y, c.w, c.h);
-                } else {
-                    ctx.fillStyle = "rgba(255, 255, 255, 0.4)"; ctx.beginPath();
-                    ctx.arc(c.x, c.y, c.h / 2, Math.PI / 2, Math.PI * 1.5); ctx.arc(c.x + c.w * 0.3, c.y - c.h * 0.2, c.h / 1.5, 0, Math.PI * 2);
-                    ctx.arc(c.x + c.w * 0.7, c.y - c.h * 0.1, c.h / 1.8, 0, Math.PI * 2); ctx.arc(c.x + c.w, c.y, c.h / 2, Math.PI * 1.5, Math.PI / 2);
-                    ctx.closePath(); ctx.fill();
+                if (cloudImg && cloudImg.complete && cloudImg.naturalWidth > 0) { ctx.drawImage(cloudImg, c.x, c.y, c.w, c.h); }
+                else {
+                    // ★ [최적화] 둥근 호(arc) 대신 단순 플랫 사각형으로 구름 대체 처리
+                    ctx.fillStyle = "#dce4ec"; ctx.fillRect(c.x, c.y + c.h * 0.2, c.w, c.h * 0.6);
                 }
             });
             ctx.restore();
 
-            // 바람 효과 최적화
             if (GAME.wind !== 0 && GAME.state !== 'menu') {
-                ctx.strokeStyle = "#b0bec5";
-                ctx.lineWidth = 1.5;
-                ctx.beginPath();
+                ctx.strokeStyle = "#b0bec5"; ctx.lineWidth = 1.5; ctx.beginPath();
                 windParticles.forEach(wp => {
                     let dir = GAME.wind > 0 ? 1 : -1; wp.x += (wp.speed * dir);
                     if (dir > 0 && wp.x > GAME.worldWidth) wp.x = 0; if (dir < 0 && wp.x < 0) wp.x = GAME.worldWidth;
@@ -862,23 +766,17 @@
             }
 
             let gStart = ASSETS.images.ground_start;
-            if (gStart && gStart.complete && gStart.naturalWidth > 0) {
-                ctx.drawImage(gStart, 0, 520, 300, 120);
-            } else {
-                ctx.fillStyle = "#c5d3df"; ctx.beginPath(); ctx.moveTo(0, 550); ctx.quadraticCurveTo(150, 520, 300, 640); ctx.lineTo(0, 640); ctx.fill();
-            }
+            if (gStart && gStart.complete && gStart.naturalWidth > 0) { ctx.drawImage(gStart, 0, 520, 300, 120); }
+            else { ctx.fillStyle = "#c5d3df"; ctx.beginPath(); ctx.moveTo(0, 550); ctx.quadraticCurveTo(150, 520, 300, 640); ctx.lineTo(0, 640); ctx.fill(); }
 
             let gEnd = ASSETS.images.ground_end;
-            if (gEnd && gEnd.complete && gEnd.naturalWidth > 0) {
-                ctx.drawImage(gEnd, 500, 480, 350, 160);
-            } else {
-                ctx.fillStyle = "#c5d3df"; ctx.beginPath(); ctx.moveTo(500, 640); ctx.quadraticCurveTo(650, 480, 850, 550); ctx.lineTo(850, 640); ctx.fill();
-            }
+            if (gEnd && gEnd.complete && gEnd.naturalWidth > 0) { ctx.drawImage(gEnd, 500, 480, 350, 160); }
+            else { ctx.fillStyle = "#c5d3df"; ctx.beginPath(); ctx.moveTo(500, 640); ctx.quadraticCurveTo(650, 480, 850, 550); ctx.lineTo(850, 640); ctx.fill(); }
 
             let pnlB = ASSETS.images.panel_b;
             bZone.segments.forEach(s => {
                 if (pnlB && pnlB.complete && pnlB.naturalWidth > 0) { ctx.drawImage(pnlB, bZone.x, s.y, bZone.width, s.height); }
-                else { ctx.fillStyle = s.color; ctx.fillRect(bZone.x, s.y, bZone.width, s.height); ctx.strokeStyle = "rgba(255,255,255,0.3)"; ctx.strokeRect(bZone.x, s.y, bZone.width, s.height); }
+                else { ctx.fillStyle = s.color; ctx.fillRect(bZone.x, s.y, bZone.width, s.height); } // 테두리 제거 최적화
                 ctx.fillStyle = "#fff"; ctx.font = "11px Arial"; ctx.fillText(s.text, bZone.x + 2, s.y + s.height / 2);
             });
 
@@ -886,20 +784,18 @@
             bZone.obstacleBlocks.forEach(ob => {
                 let obX = bZone.x + ob.relX; let drawFallback = true;
                 if (ob.hp === 1 && bTileDmg && bTileDmg.complete && bTileDmg.naturalWidth > 0) { ctx.drawImage(bTileDmg, obX, ob.y, ob.w, ob.h); drawFallback = false; }
-                else if (bTile && bTile.complete && bTile.naturalWidth > 0) {
-                    ctx.drawImage(bTile, obX, ob.y, ob.w, ob.h); drawFallback = false;
-                    if (ob.hp === 1) { ctx.strokeStyle = "#111"; ctx.beginPath(); ctx.moveTo(obX + 2, ob.y + 2); ctx.lineTo(obX + ob.w / 2, ob.y + ob.h / 2); ctx.lineTo(obX + ob.w - 2, ob.y + ob.h / 2 + 5); ctx.stroke(); }
-                }
+                else if (bTile && bTile.complete && bTile.naturalWidth > 0) { ctx.drawImage(bTile, obX, ob.y, ob.w, ob.h); drawFallback = false; }
                 if (drawFallback) {
-                    ctx.fillStyle = "#556b2f"; ctx.fillRect(obX, ob.y, ob.w, ob.h); ctx.strokeStyle = "#2c3e50"; ctx.lineWidth = 2; ctx.strokeRect(obX, ob.y, ob.w, ob.h); ctx.lineWidth = 1;
-                    if (ob.hp === 1) { ctx.strokeStyle = "#111"; ctx.beginPath(); ctx.moveTo(obX + 2, ob.y + 2); ctx.lineTo(obX + ob.w / 2, ob.y + ob.h / 2); ctx.lineTo(obX + ob.w - 2, ob.y + ob.h / 2 + 5); ctx.stroke(); }
+                    // ★ [최적화] 선 긋기 연산을 빼고 솔리드 컬러로 상태 표현
+                    ctx.fillStyle = ob.hp === 2 ? "#556b2f" : "#7b8d42";
+                    ctx.fillRect(obX, ob.y, ob.w, ob.h);
                 }
             });
 
             let pnlC = ASSETS.images.panel_c;
             cZone.segments.forEach(s => {
                 if (pnlC && pnlC.complete && pnlC.naturalWidth > 0) { ctx.drawImage(pnlC, cZone.x, cZone.y + s.yOff, cZone.width, s.h); }
-                else { ctx.fillStyle = s.color; ctx.fillRect(cZone.x, cZone.y + s.yOff, cZone.width, s.h); ctx.strokeStyle = "rgba(255,255,255,0.3)"; ctx.strokeRect(cZone.x, cZone.y + s.yOff, cZone.width, s.h); }
+                else { ctx.fillStyle = s.color; ctx.fillRect(cZone.x, cZone.y + s.yOff, cZone.width, s.h); }
                 ctx.fillStyle = "#fff"; ctx.font = "12px Arial"; ctx.fillText(s.text, cZone.x + 2, cZone.y + s.yOff + s.h / 2 + 5);
             });
 
@@ -907,9 +803,7 @@
                 let vX = GAME.cameraX + canvas.width - 10;
                 ctx.fillStyle = "rgba(255, 255, 255, 0.1)"; ctx.fillRect(vX, cZone.minY, 7, 380);
                 cZone.segments.forEach(s => {
-                    ctx.fillStyle = s.color; ctx.globalAlpha = 0.8; ctx.fillRect(vX, cZone.y + s.yOff, 7, s.h);
-                    ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.setLineDash([2, 2]); ctx.strokeRect(vX, cZone.y + s.yOff, 7, s.h);
-                    ctx.setLineDash([]); ctx.globalAlpha = 1.0;
+                    ctx.fillStyle = s.color; ctx.fillRect(vX, cZone.y + s.yOff, 7, s.h); // 불필요한 테두리 및 알파 조작 제거
                 });
             }
 
@@ -917,39 +811,45 @@
             targetBlocks.forEach(b => {
                 let drawFallback = true;
                 if (b.hp === 1 && tRockDmg && tRockDmg.complete && tRockDmg.naturalWidth > 0) { ctx.drawImage(tRockDmg, b.x, b.y, b.w, b.h); drawFallback = false; }
-                else if (tRock && tRock.complete && tRock.naturalWidth > 0) {
-                    ctx.drawImage(tRock, b.x, b.y, b.w, b.h); drawFallback = false;
-                    if (b.hp === 1) { ctx.strokeStyle = "#1a1a1a"; ctx.beginPath(); ctx.moveTo(b.x + 2, b.y + 2); ctx.lineTo(b.x + b.w / 2, b.y + b.h / 2); ctx.lineTo(b.x + b.w - 2, b.y + b.h / 2 + 5); ctx.stroke(); }
-                }
+                else if (tRock && tRock.complete && tRock.naturalWidth > 0) { ctx.drawImage(tRock, b.x, b.y, b.w, b.h); drawFallback = false; }
                 if (drawFallback) {
-                    ctx.fillStyle = "#4a5a6a"; ctx.fillRect(b.x, b.y, b.w, b.h); ctx.strokeStyle = "#3a4a5a"; ctx.strokeRect(b.x, b.y, b.w, b.h);
-                    if (b.hp === 1) { ctx.strokeStyle = "#1a1a1a"; ctx.beginPath(); ctx.moveTo(b.x + 2, b.y + 2); ctx.lineTo(b.x + b.w / 2, b.y + b.h / 2); ctx.lineTo(b.x + b.w - 2, b.y + b.h / 2 + 5); ctx.stroke(); }
+                    // ★ [최적화] 타겟 블록 역시 선 긋기 제거
+                    ctx.fillStyle = b.hp === 2 ? "#4a5a6a" : "#6c7a89";
+                    ctx.fillRect(b.x, b.y, b.w, b.h);
                 }
             });
 
             let tData = TARGET_TYPES[player.targetEquipped]; let coreImg = ASSETS.images[tData.imgKey]; let r = tData.weakRadius;
             if (coreImg && coreImg.complete && coreImg.naturalWidth > 0) { ctx.drawImage(coreImg, weakPoint.x - r, weakPoint.y - r, r * 2, r * 2); }
-            else { ctx.fillStyle = "#8a2be2"; ctx.beginPath(); ctx.arc(weakPoint.x, weakPoint.y, r, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "#ff00ff"; ctx.lineWidth = 2; ctx.stroke(); }
+            else { ctx.fillStyle = "#8a2be2"; ctx.beginPath(); ctx.arc(weakPoint.x, weakPoint.y, r, 0, Math.PI * 2); ctx.fill(); }
 
-            ctx.font = "bold 12px Arial";
-            ctx.fillStyle = "#000"; ctx.fillText(tData.name, weakPoint.x - 17, weakPoint.y + r + 16);
+            ctx.font = "bold 12px Arial"; ctx.fillStyle = "#000"; ctx.fillText(tData.name, weakPoint.x - 17, weakPoint.y + r + 16);
             ctx.fillStyle = "#fff"; ctx.fillText(tData.name, weakPoint.x - 18, weakPoint.y + r + 15);
 
-            let cData = CANNONS[player.equipped]; let pLevel = player.cannons[player.equipped].level;
-            let baseImg = ASSETS.images.cannon_base; let barrelImg = ASSETS.images.cannon_barrel;
+            function drawCannon(slotKey, cId) {
+                let slotPos = SLOTS[slotKey];
+                if (slotKey === 'slot2' && !player.slot2Unlocked) {
+                    ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.beginPath(); ctx.arc(slotPos.x, slotPos.y, 18, 0, Math.PI * 2); ctx.fill();
+                    ctx.font = "16px Arial"; ctx.textAlign = "center"; ctx.fillStyle = "#fff"; ctx.fillText("🔒", slotPos.x, slotPos.y + 6); ctx.textAlign = "left"; return;
+                }
+                if (!cId) { ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.arc(slotPos.x, slotPos.y, 18, 0, Math.PI * 2); ctx.fill(); return; }
 
-            ctx.save(); ctx.translate(player.x, player.y); ctx.rotate(player.angle * Math.PI / 180);
-            if (barrelImg && barrelImg.complete && barrelImg.naturalWidth > 0) { ctx.drawImage(barrelImg, 0, -10, 40, 20); }
-            else { ctx.fillStyle = "#1a252f"; ctx.fillRect(0, -8, 35, 16); }
-            ctx.restore();
+                let cData = CANNONS[cId]; let pLevel = player.cannons[cId].level;
+                let baseImg = ASSETS.images.cannon_base; let barrelImg = ASSETS.images.cannon_barrel;
 
-            if (baseImg && baseImg.complete && baseImg.naturalWidth > 0) { ctx.drawImage(baseImg, player.x - 20, player.y - 20, 40, 40); }
-            else { ctx.fillStyle = cData.color; ctx.beginPath(); ctx.arc(player.x, player.y, 18, 0, Math.PI * 2); ctx.fill(); }
+                ctx.save(); ctx.translate(slotPos.x, slotPos.y); ctx.rotate(player.angle * Math.PI / 180);
+                if (barrelImg && barrelImg.complete && barrelImg.naturalWidth > 0) { ctx.drawImage(barrelImg, 0, -10, 40, 20); } else { ctx.fillStyle = "#1a252f"; ctx.fillRect(0, -8, 35, 16); }
+                ctx.restore();
 
-            ctx.font = "bold 13px Arial"; ctx.textAlign = "center";
-            ctx.fillStyle = "#000"; ctx.fillText(`Lv.${pLevel}`, player.x + 1, player.y + 36);
-            ctx.fillStyle = "#fff"; ctx.fillText(`Lv.${pLevel}`, player.x, player.y + 35);
-            ctx.textAlign = "left";
+                if (baseImg && baseImg.complete && baseImg.naturalWidth > 0) { ctx.drawImage(baseImg, slotPos.x - 20, slotPos.y - 20, 40, 40); } else { ctx.fillStyle = cData.color; ctx.beginPath(); ctx.arc(slotPos.x, slotPos.y, 18, 0, Math.PI * 2); ctx.fill(); }
+
+                ctx.font = "bold 13px Arial"; ctx.textAlign = "center";
+                ctx.fillStyle = "#000"; ctx.fillText(`Lv.${pLevel}`, slotPos.x + 1, slotPos.y + 36); ctx.fillStyle = "#fff"; ctx.fillText(`Lv.${pLevel}`, slotPos.x, slotPos.y + 35);
+                ctx.font = "bold 11px Arial"; ctx.fillStyle = "#000"; ctx.fillText(`[${slotKey === 'slot1' ? '1' : '2'}]`, slotPos.x + 1, slotPos.y - 23);
+                ctx.fillStyle = "#ffd700"; ctx.fillText(`[${slotKey === 'slot1' ? '1' : '2'}]`, slotPos.x, slotPos.y - 24); ctx.textAlign = "left";
+            }
+
+            drawCannon('slot1', player.equipped.slot1); drawCannon('slot2', player.equipped.slot2);
 
             if (player.isDragging) {
                 ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(player.x - 60, player.y - 55, 120, 8);
@@ -957,32 +857,23 @@
                 ctx.fillStyle = `rgb(${255 * pRatio}, ${255 * (1 - pRatio)}, 0)`; ctx.fillRect(player.x - 60, player.y - 55, 120 * pRatio, 8);
             }
 
-            // ★ [최적화] 대포알 완벽한 단색(Solid) 원으로만 그리기
             projectiles.forEach(p => {
-                if (p.active) {
-                    ctx.fillStyle = cData.color;
-                    ctx.beginPath();
-                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-                    ctx.fill();
+                if (p.active) { ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill(); }
+            });
+
+            // ★ [최적화] 파티클 투명도(alpha) 대신 수명에 따른 '사이즈 축소'로 표현
+            hitParticles.forEach(p => {
+                let curSize = p.size * (p.life / 50);
+                if (curSize > 0) {
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(p.x - curSize / 2, p.y - curSize / 2, curSize, curSize);
                 }
             });
 
-            hitParticles.forEach(p => {
-                ctx.fillStyle = p.color; ctx.globalAlpha = Math.max(0, p.life / 50);
-                ctx.fillRect(p.x, p.y, p.size, p.size); ctx.globalAlpha = 1.0;
-            });
-
             floatingTexts.forEach(ft => {
-                ctx.font = "bold 16px Arial";
-                ctx.globalAlpha = ft.life / 60;
-
-                ctx.fillStyle = "#000";
-                ctx.fillText(ft.text, ft.x + 1, ft.y + 1);
-
-                ctx.fillStyle = ft.color;
-                ctx.fillText(ft.text, ft.x, ft.y);
-
-                ctx.globalAlpha = 1.0;
+                ctx.font = "bold 16px Arial"; ctx.globalAlpha = ft.life / 60;
+                ctx.fillStyle = "#000"; ctx.fillText(ft.text, ft.x + 1, ft.y + 1);
+                ctx.fillStyle = ft.color; ctx.fillText(ft.text, ft.x, ft.y); ctx.globalAlpha = 1.0;
             });
 
             ctx.restore();
