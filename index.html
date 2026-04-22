@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Project Color-Shot v10.0 (60FPS Capped & Double Speed)</title>
+    <title>Project Color-Shot v10.5 (Speed Normalized & 60FPS Capped)</title>
     <style>
         * {
             box-sizing: border-box;
@@ -127,20 +127,9 @@
             z-index: 20;
         }
 
-            #itemBtn:active {
-                transform: scale(0.9);
-            }
-
-            #itemBtn.disabled {
-                cursor: not-allowed;
-                opacity: 0.3;
-                filter: grayscale(100%);
-            }
-
-            #itemBtn.active {
-                background: linear-gradient(135deg, #2ecc71, #27ae60);
-                border-color: #fff;
-            }
+            #itemBtn:active { transform: scale(0.9); }
+            #itemBtn.disabled { cursor: not-allowed; opacity: 0.3; filter: grayscale(100%); }
+            #itemBtn.active { background: linear-gradient(135deg, #2ecc71, #27ae60); border-color: #fff; }
 
         .virtual-stick-guide {
             position: absolute;
@@ -161,183 +150,50 @@
         }
 
             .virtual-stick-guide::after {
-                content: '';
-                width: 34px;
-                height: 34px;
-                background: #444;
-                border-radius: 50%;
-                border: 2px solid #222;
+                content: ''; width: 34px; height: 34px;
+                background: #444; border-radius: 50%; border: 2px solid #222;
             }
 
-        #game-container.dragging .virtual-stick-guide {
-            opacity: 1;
-            background: rgba(255,255,255,0.3);
-        }
+        #game-container.dragging .virtual-stick-guide { opacity: 1; background: rgba(255,255,255,0.3); }
 
         .popup {
-            display: none;
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.85);
-            pointer-events: auto;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: white;
-            z-index: 100;
-            touch-action: auto;
+            display: none; position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%; background: rgba(0,0,0,0.85);
+            pointer-events: auto; flex-direction: column;
+            justify-content: center; align-items: center;
+            color: white; z-index: 100; touch-action: auto;
         }
 
             .popup button {
-                margin-top: 10px;
-                padding: 12px 25px;
-                font-size: 15px;
-                font-weight: bold;
-                border: none;
-                background-color: #5b8fb9;
-                color: white;
-                border-radius: 8px;
-                cursor: pointer;
-                transition: 0.2s;
+                margin-top: 10px; padding: 12px 25px; font-size: 15px;
+                font-weight: bold; border: none; background-color: #5b8fb9;
+                color: white; border-radius: 8px; cursor: pointer; transition: 0.2s;
             }
+                .popup button:active { transform: scale(0.95); }
 
-                .popup button:active {
-                    transform: scale(0.95);
-                }
+        #menuUI { background: transparent; justify-content: flex-start; padding-top: 80px; }
+            #menuUI h1 { font-size: 36px; text-align: center; margin-bottom: 5px; color: #fff; }
+            #menuUI .nickname { font-size: 14px; color: #eee; margin-bottom: 40px; }
 
-        #menuUI {
-            background: transparent;
-            justify-content: flex-start;
-            padding-top: 80px;
-        }
+        .menu-btn-group { display: flex; flex-direction: column; gap: 10px; width: 60%; }
 
-            #menuUI h1 {
-                font-size: 36px;
-                text-align: center;
-                margin-bottom: 5px;
-                color: #fff;
-            }
+        #shopPopup { justify-content: flex-start; padding-top: 30px; }
+        .shop-tabs { display: flex; width: 90%; gap: 5px; margin-bottom: 10px; }
+            .shop-tabs button { flex: 1; padding: 10px 0; font-size: 13px; margin-top: 0; background-color: #34495e; border-radius: 5px 5px 0 0; }
+                .shop-tabs button.active { background-color: #5b8fb9; border-bottom: 3px solid #fff; }
 
-            #menuUI .nickname {
-                font-size: 14px;
-                color: #eee;
-                margin-bottom: 40px;
-            }
+        .shop-list { width: 100%; max-height: 60%; overflow-y: auto; display: flex; flex-direction: column; align-items: center; -webkit-overflow-scrolling: touch; }
+        .shop-item { background: rgba(255,255,255,0.15); padding: 15px; border-radius: 8px; margin-bottom: 10px; width: 85%; text-align: center; border: 1px solid rgba(255,255,255,0.2); }
+            .shop-item.locked { opacity: 0.5; background: rgba(100,100,100,0.2); }
+        .item-name { font-weight: bold; font-size: 16px; margin-bottom: 5px; color: #fff; }
+        .item-desc { font-size: 12px; color: #ddd; margin-bottom: 10px; line-height: 1.4; }
+        .btn-group { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
 
-        .menu-btn-group {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            width: 60%;
-        }
+        .ranking-board { background: rgba(255,255,255,0.1); border-radius: 8px; padding: 15px; width: 80%; margin: 15px 0; border: 1px solid rgba(255,255,255,0.3); }
+            .ranking-board h3 { margin: 0 0 10px 0; text-align: center; color: #ffd700; }
+        .rank-item { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 14px; }
 
-        #shopPopup {
-            justify-content: flex-start;
-            padding-top: 30px;
-        }
-
-        .shop-tabs {
-            display: flex;
-            width: 90%;
-            gap: 5px;
-            margin-bottom: 10px;
-        }
-
-            .shop-tabs button {
-                flex: 1;
-                padding: 10px 0;
-                font-size: 13px;
-                margin-top: 0;
-                background-color: #34495e;
-                border-radius: 5px 5px 0 0;
-            }
-
-                .shop-tabs button.active {
-                    background-color: #5b8fb9;
-                    border-bottom: 3px solid #fff;
-                }
-
-        .shop-list {
-            width: 100%;
-            max-height: 60%;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .shop-item {
-            background: rgba(255,255,255,0.15);
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            width: 85%;
-            text-align: center;
-            border: 1px solid rgba(255,255,255,0.2);
-        }
-
-            .shop-item.locked {
-                opacity: 0.5;
-                background: rgba(100,100,100,0.2);
-            }
-
-        .item-name {
-            font-weight: bold;
-            font-size: 16px;
-            margin-bottom: 5px;
-            color: #fff;
-        }
-
-        .item-desc {
-            font-size: 12px;
-            color: #ddd;
-            margin-bottom: 10px;
-            line-height: 1.4;
-        }
-
-        .btn-group {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .ranking-board {
-            background: rgba(255,255,255,0.1);
-            border-radius: 8px;
-            padding: 15px;
-            width: 80%;
-            margin: 15px 0;
-            border: 1px solid rgba(255,255,255,0.3);
-        }
-
-            .ranking-board h3 {
-                margin: 0 0 10px 0;
-                text-align: center;
-                color: #ffd700;
-            }
-
-        .rank-item {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 5px;
-            font-size: 14px;
-        }
-
-        #fpsDisplay {
-            position: absolute;
-            top: 2px;
-            right: 5px;
-            font-size: 10px;
-            color: rgba(0,255,0,0.7);
-            pointer-events: none;
-            z-index: 999;
-            font-family: monospace;
-        }
+        #fpsDisplay { position: absolute; top: 2px; right: 5px; font-size: 10px; color: rgba(0,255,0,0.7); pointer-events: none; z-index: 999; font-family: monospace; }
     </style>
 </head>
 <body>
@@ -402,12 +258,12 @@
 
     <script>
         /* ==========================================================
-           Color-Shot v10.0  |  Capped 60FPS & Perfect Sound Restored
+           Color-Shot v10.5  |  Speed Normalized & 60FPS Capped
 
-           ★ 핵심 변경 사항:
-           1. 사운드 플레이 함수(playSound) 완벽 복구
-           2. requestAnimationFrame을 제어하여 최대 60FPS로 강제 고정
-           3. PC와 모바일 모두 60FPS로 동일하게 렌더링되며, 물리만 2배속 유지
+           ★ 속도 정상화 내역:
+           1. 배속(GLOBAL_TIME_SCALE)을 2.0에서 1.0(기본속도)으로 절반 감소
+           2. 턴 종료 후 복귀 대기 시간을 500ms에서 1000ms(정상호흡)로 복구
+           3. 60FPS Capping은 그대로 유지하여 PC/모바일 간 완벽한 동기화 보장
            ========================================================== */
 
         const canvas = document.getElementById('gameCanvas');
@@ -431,16 +287,15 @@
         const GRAV = 0.05;
         const WIND_M = 0.0025;
 
-        // ★ 시간 보정 및 배속 설정
-        const TARGET_FPS = 144; // 기존 기준점 (물리 충돌 계산 기준)
-        const MS_PER_UPDATE = 1000 / TARGET_FPS;
-        const GLOBAL_TIME_SCALE = 2.0; // 환경 물리 2배속
+        // ★ 시간 보정 및 배속 설정 (정상 속도로 롤백)
+        const TARGET_FPS = 144;
+        const MS_PER_UPDATE = 1000 / TARGET_FPS; 
+        const GLOBAL_TIME_SCALE = 1.0; // 강제 2배속 제거, 정상(1.0) 속도로 절반 감소
 
-        // ★ 60프레임 강제 고정용 상수 (PC에서 너무 빨라지는 현상 방지)
+        // 60프레임 강제 고정용 상수
         const MAX_RENDER_FPS = 60;
         const RENDER_INTERVAL = 1000 / MAX_RENDER_FPS;
 
-        // ── 에셋 및 사운드 (★ 복구 완료) ───────────────────────────
         const ASSETS = { images: {}, sounds: {} };
         function loadImage(key, path) { const img = new Image(); img.onload = () => { img.ready = true; }; img.src = `img/${path}`; ASSETS.images[key] = img; }
         function loadSound(key, path) { ASSETS.sounds[key] = new Audio(`sound/${path}`); }
@@ -458,11 +313,10 @@
             const a = ASSETS.sounds[key];
             if (!a || a.readyState < 2) return;
             const now = Date.now();
-            // 너무 잦은 사운드 겹침 방지 (100ms 쿨다운)
             if (audioThrottle[key] && now - audioThrottle[key] < 100) return;
             audioThrottle[key] = now;
             a.currentTime = 0;
-            a.play().catch(() => { });
+            a.play().catch(() => {});
         }
 
         const GAME = {
@@ -557,7 +411,7 @@
         }
 
         let bZone = { x: 280, width: 40, dir: 1, speed: 0.4, minX: 200, maxX: 380, segments: [], obstacleBlocks: [] };
-        let cZone = { x: 500, y: 300, width: 25, height: 120, dir: 1, speed: 0.8, minY: 100, maxY: 480, segments: [{ type: 'goldMult', text: '💰 x2', color: 'rgba(50,255,50,0.5)', yOff: 0, h: 60 }, { type: 'qty4', text: 'x4', color: 'rgba(255,215,0,0.6)', yOff: 60, h: 60 }] };
+        let cZone = { x: 500, y: 300, width: 25, height: 120, dir: 1, speed: 0.8, minY: 100, maxY: 480, segments: [ { type: 'goldMult', text: '💰 x2', color: 'rgba(50,255,50,0.5)', yOff: 0, h: 60 }, { type: 'qty4', text: 'x4', color: 'rgba(255,215,0,0.6)', yOff: 60, h: 60 } ] };
         let targetBlocks = []; const weakPoint = { x: 630, y: 510 };
 
         function initTarget() {
@@ -573,7 +427,7 @@
         function generateBZone() {
             bZone.segments = []; bZone.obstacleBlocks = [];
             for (let c = 0; c < 2; c++) for (let r = 0; r < 4; r++) bZone.obstacleBlocks.push({ relX: c * 20, y: r * 20, w: 20, h: 20, hp: 2 });
-            const midTypes = [{ id: 'qty4', text: '개수 x4', color: 'rgba(255,215,0,0.6)' }, { id: 'qty2', text: '개수 x2', color: 'rgba(0,191,255,0.6)' }, { id: 'dmg4', text: '파워 x4', color: 'rgba(255,100,100,0.6)' }, { id: 'dmg2', text: '파워 x2', color: 'rgba(255,160,160,0.6)' }].sort(() => Math.random() - 0.5);
+            const midTypes = [ { id: 'qty4', text: '개수 x4', color: 'rgba(255,215,0,0.6)' }, { id: 'qty2', text: '개수 x2', color: 'rgba(0,191,255,0.6)' }, { id: 'dmg4', text: '파워 x4', color: 'rgba(255,100,100,0.6)' }, { id: 'dmg2', text: '파워 x2', color: 'rgba(255,160,160,0.6)' } ].sort(() => Math.random() - 0.5);
             let cy = 80;
             for (let i = 0; i < 4; i++) { bZone.segments.push({ ...midTypes[i], y: cy, height: 75 }); cy += 75; }
             for (let c = 0; c < 2; c++) for (let r = 0; r < 13; r++) bZone.obstacleBlocks.push({ relX: c * 20, y: 380 + r * 20, w: 20, h: 20, hp: 2 });
@@ -607,35 +461,30 @@
         let fpsFrames = 0, fpsTime = performance.now();
         function updateFPS(now) { fpsFrames++; if (now - fpsTime >= 1000) { fpsElem.textContent = `FPS: ${fpsFrames}`; fpsFrames = 0; fpsTime = now; } }
 
-        // ── 게임 루프 (★ 60FPS 강제 캡 적용) ───────────────────────
         let rafId = null, lastTime = 0, accumulator = 0;
 
         function startLoop() {
             if (rafId) return;
             lastTime = performance.now();
-
+            
             function tick(now) {
                 rafId = requestAnimationFrame(tick);
-
+                
                 let dt = now - lastTime;
-
-                // ★ 핵심: PC 모니터가 144Hz더라도, 16.6ms가 지나지 않았다면 프레임을 스킵하여 60FPS 강제 고정
+                
+                // 60FPS 강제 고정
                 if (dt < RENDER_INTERVAL) return;
 
-                // 다음 프레임 계산의 정확성을 위해 초과된 시간 조율
                 lastTime = now - (dt % RENDER_INTERVAL);
-
-                if (dt > 250) dt = 250; // 터널링 방지 캡
+                if (dt > 250) dt = 250; 
 
                 updateFPS(now);
+                updateControls(dt / 1000); 
 
-                // 조작: 1배속 유지
-                updateControls(dt / 1000);
-
-                // 물리: 남은 시간을 2배속(GLOBAL_TIME_SCALE)으로 뻥튀기하여 계산
+                // 물리 속도를 1배속(정상화)으로 반영
                 accumulator += dt * GLOBAL_TIME_SCALE;
                 while (accumulator >= MS_PER_UPDATE) {
-                    updatePhysics();
+                    updatePhysics(); 
                     accumulator -= MS_PER_UPDATE;
                 }
 
@@ -680,7 +529,7 @@
 
         function useItem() {
             if (GAME.state !== 'aiming' || player.items.tactical <= 0) return;
-            if (GAME.itemActive) { GAME.itemActive = false; initTurnEnvironment(); addFloatingText(player.x, player.y - 40, '아이템 취소', '#fff'); }
+            if (GAME.itemActive) { GAME.itemActive = false; initTurnEnvironment(); addFloatingText(player.x, player.y - 40, '아이템 취소', '#fff'); } 
             else { GAME.itemActive = true; GAME.wind = 0; UI.wind.textContent = '🌬️ 날씨: 멈춤 (아이템 대기 중)'; initWindParticles(); addFloatingText(player.x, player.y - 40, '정지 & x2 활성!', '#f39c12'); }
             updateUITurnAndItems();
         }
@@ -707,7 +556,7 @@
             document.getElementById('resultScorePop').textContent = `이번 판 점수: ${GAME.totalDamage}`;
             document.getElementById('resultGoldText').textContent = `누적 보유 재화: 💰 ${GAME.gold}`;
             saveLocalData();
-            const list = [{ n: '전설의 기획자', s: GAME.totalDamage + 5000 }, { n: '불타는 지갑', s: GAME.totalDamage + 1500 }, { n: GAME.nickname, s: GAME.totalDamage }].sort((a, b) => b.s - a.s);
+            const list = [ { n: '전설의 기획자', s: GAME.totalDamage + 5000 }, { n: '불타는 지갑', s: GAME.totalDamage + 1500 }, { n: GAME.nickname, s: GAME.totalDamage } ].sort((a, b) => b.s - a.s);
             document.getElementById('mockRanking').innerHTML = list.map((item, i) => `<div class="rank-item" style="color:${item.n === GAME.nickname ? '#ffd700' : '#ddd'};font-weight:${item.n === GAME.nickname ? 'bold' : 'normal'};"><span>${i + 1}위. ${item.n}</span><span>${item.s} 점</span></div>`).join('');
         }
 
@@ -737,7 +586,8 @@
             }
 
             if (GAME.state === 'returning') {
-                GAME.cameraX -= 12;
+                // 속도가 정상화되었으므로 복귀 속도 조절
+                GAME.cameraX -= 6; 
                 if (GAME.cameraX <= 0) { GAME.cameraX = 0; GAME.turn++; if (GAME.turn > GAME.maxTurns) endGame(); else initTurnEnvironment(); }
             }
 
@@ -760,7 +610,7 @@
                             if (dx * dx + dy * dy <= p.radius * p.radius) {
                                 hitObs = true; ob.hp--; p.active = false; playSound('hit_metal'); triggerShake(6, 10);
                                 createHitParticles(p.x, p.y, '#7f8c8d');
-                                if (ob.hp <= 0) { addFloatingText(obX, p.y, '파괴됨!', '#e74c3c'); playSound('break_metal'); bZone.obstacleBlocks.splice(j, 1); }
+                                if (ob.hp <= 0) { addFloatingText(obX, p.y, '파괴됨!', '#e74c3c'); playSound('break_metal'); bZone.obstacleBlocks.splice(j, 1); } 
                                 else { addFloatingText(obX, p.y, '흠집!', '#f39c12'); }
                                 break;
                             }
@@ -794,7 +644,7 @@
                             const s = cZone.segments[k];
                             if (relY >= s.yOff && relY <= s.yOff + s.h) {
                                 playSound('buff');
-                                if (s.type === 'goldMult') { p.gMult = 2; addFloatingText(cZone.x, p.y - 20, '💰 x2', '#0f0'); }
+                                if (s.type === 'goldMult') { p.gMult = 2; addFloatingText(cZone.x, p.y - 20, '💰 x2', '#0f0'); } 
                                 else if (s.type === 'qty4') {
                                     const cnt = projectiles.length > 25 ? 1 : 4; addFloatingText(cZone.x, p.y - 20, 'C존 개수 x4', s.color);
                                     for (let j = 1; j < cnt; j++) {
@@ -838,7 +688,8 @@
 
                 if (activeCount === 0 && !GAME.turnWaiting) {
                     GAME.turnWaiting = true; saveLocalData(); const capturedId = ++GAME._turnId;
-                    setTimeout(() => { if (GAME._turnId === capturedId) GAME.state = 'returning'; }, 500);
+                    // ★ 속도 정상화에 맞춰 턴 복귀 딜레이를 1000ms로 원복
+                    setTimeout(() => { if (GAME._turnId === capturedId) GAME.state = 'returning'; }, 1000);
                 }
             }
         }
@@ -966,7 +817,7 @@
 
         let currentShopTab = 'cannon';
         function changeShopTab(tab) { currentShopTab = tab; document.querySelectorAll('.shop-tabs button').forEach(b => b.classList.remove('active')); document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active'); renderShopUI(); }
-        function renderShopUI() {
+        function renderShopUI() { 
             document.getElementById('shopGold').textContent = `보유 재화: 💰 ${GAME.gold}`; const con = document.getElementById('shopListContainer'); con.innerHTML = '';
             if (currentShopTab === 'cannon') {
                 if (!player.slot2Unlocked) { const d = document.createElement('div'); d.className = 'shop-item'; d.innerHTML = `<div class="item-name">🔒 추가 대포 슬롯 2</div><div class="item-desc">해금비용: 1000G</div><div class="btn-group"><button onclick="buySlot2()" style="background:#e67e22;width:100%;">슬롯 해금 (1000G)</button></div>`; con.appendChild(d); }
