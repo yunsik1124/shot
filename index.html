@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Project Color-Shot v8.8.8 (Performance Optimized)</title>
+    <title>Project Color-Shot v10.0 (Full Version + Circle Proj)</title>
     <style>
         /* 🎮 모바일 꽉 찬 화면 및 스크롤 바운스 완벽 차단 */
         body {
@@ -58,7 +58,8 @@
             display: block;
             width: 360px;
             height: 640px;
-            image-rendering: pixelated;
+            /* 신형 기기 흐림 현상 방지 */
+            image-rendering: -webkit-optimize-contrast;
             position: relative;
             z-index: 1;
             background: transparent;
@@ -377,11 +378,11 @@
 
     <script>
         const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d', { alpha: true });
+        const ctx = canvas.getContext('2d', { alpha: true, desynchronized: true });
         const gameContainer = document.getElementById('game-container');
         const bgLayer = document.getElementById('bg-layer');
 
-        // ★ [최적화 1] DOM 캐싱 (실시간 탐색 방지)
+        // ★ [최적화 1] DOM 캐싱
         const UI_CACHE = {
             score: document.getElementById('uiScore'),
             gold: document.getElementById('uiGold')
@@ -416,7 +417,6 @@
         function playSound(key) {
             let audio = ASSETS.sounds[key];
             if (!audio || audio.readyState < 2) return;
-
             if (key === 'bgm') return;
 
             const now = Date.now();
@@ -689,7 +689,6 @@
             if (player.items.tactical === 0 || GAME.state !== 'aiming') iBtn.classList.add('disabled'); else iBtn.classList.remove('disabled');
         }
 
-        // ★ [최적화 2] 실시간 UI 업데이트 DOM 탐색 방지
         function updateRealtimeScoreUI() {
             if (GAME.totalDamage !== GAME._lastDmg) {
                 UI_CACHE.score.innerText = `점수: ${GAME.totalDamage}`;
@@ -701,11 +700,20 @@
             }
         }
 
-        function gameLoop() {
-            updatePhysics();
-            drawScene();
-            updateRealtimeScoreUI();
+        // ★ [최적화 2] 60FPS 고정을 위한 프레임 제어
+        let lastTimestamp = 0;
+        const fpsInterval = 1000 / 60;
+
+        function gameLoop(timestamp) {
             requestAnimationFrame(gameLoop);
+            
+            const elapsed = timestamp - lastTimestamp;
+            if (elapsed > fpsInterval) {
+                lastTimestamp = timestamp - (elapsed % fpsInterval);
+                updatePhysics();
+                drawScene();
+                updateRealtimeScoreUI();
+            }
         }
 
         function updatePhysics() {
@@ -713,7 +721,7 @@
             bZone.x += bZone.speed * bZone.dir; if (bZone.x < bZone.minX || bZone.x > bZone.maxX) bZone.dir *= -1;
             cZone.y += cZone.speed * cZone.dir; if (cZone.y < cZone.minY || cZone.y + cZone.height > cZone.maxY) cZone.dir *= -1;
 
-            // ★ [최적화 3-1] 배열 삭제 O(1) 스왑 방식 적용
+            // ★ [최적화 3-1] O(1) 배열 삭제 (Swap and Pop)
             for (let i = floatingTexts.length - 1; i >= 0; i--) {
                 let ft = floatingTexts[i]; ft.y -= 1; ft.life--;
                 if (ft.life <= 0) {
@@ -722,7 +730,7 @@
                 }
             }
 
-            // ★ [최적화 3-2] 배열 삭제 O(1) 스왑 방식 적용
+            // ★ [최적화 3-2] O(1) 배열 삭제
             for (let i = hitParticles.length - 1; i >= 0; i--) {
                 let p = hitParticles[i];
                 p.vy += PHYSICS.gravity; p.x += p.vx; p.y += p.vy; p.life--;
@@ -836,7 +844,7 @@
                     }
                 }
 
-                // ★ [최적화 3-3] 배열 삭제 O(1) 스왑 방식 적용
+                // ★ [최적화 3-3] O(1) 배열 삭제
                 for (let i = projectiles.length - 1; i >= 0; i--) {
                     if (!projectiles[i].active) {
                         projectiles[i] = projectiles[projectiles.length - 1];
@@ -861,7 +869,9 @@
             if (CAMERA.shakeFrames > 0) { sx = (Math.random() - 0.5) * CAMERA.shakeIntensity; sy = (Math.random() - 0.5) * CAMERA.shakeIntensity; }
 
             if (GAME.state === 'menu') GAME.cameraX = 0;
-            ctx.save(); ctx.translate(-GAME.cameraX + sx, sy);
+            ctx.save(); 
+            // ★ [최적화 4] 정수 좌표 변환 강제
+            ctx.translate((-GAME.cameraX + sx) | 0, sy | 0);
 
             let camLeft = GAME.cameraX;
             let camRight = GAME.cameraX + canvas.width;
@@ -871,7 +881,7 @@
                 windParticles.forEach(wp => {
                     let dir = GAME.wind > 0 ? 1 : -1; wp.x += (wp.speed * dir);
                     if (dir > 0 && wp.x > GAME.worldWidth) wp.x = 0; if (dir < 0 && wp.x < 0) wp.x = GAME.worldWidth;
-                    ctx.moveTo(wp.x, wp.y); ctx.lineTo(wp.x + (wp.length * dir), wp.y + 2);
+                    ctx.moveTo(wp.x | 0, wp.y | 0); ctx.lineTo((wp.x + (wp.length * dir)) | 0, (wp.y + 2) | 0);
                 });
                 ctx.stroke();
             }
@@ -885,82 +895,84 @@
             else { ctx.fillStyle = "#c5d3df"; ctx.beginPath(); ctx.moveTo(500, 640); ctx.quadraticCurveTo(650, 480, 850, 550); ctx.lineTo(850, 640); ctx.fill(); }
 
             bZone.segments.forEach(s => {
-                ctx.fillStyle = s.color; ctx.fillRect(bZone.x, s.y, bZone.width, s.height);
-                ctx.fillStyle = "#fff"; ctx.font = "11px Arial"; ctx.fillText(s.text, bZone.x + 2, s.y + s.height / 2);
+                ctx.fillStyle = s.color; ctx.fillRect(bZone.x | 0, s.y | 0, bZone.width, s.height);
+                ctx.fillStyle = "#fff"; ctx.font = "11px Arial"; ctx.fillText(s.text, (bZone.x + 2) | 0, (s.y + s.height / 2) | 0);
             });
 
             bZone.obstacleBlocks.forEach(ob => {
                 let obX = bZone.x + ob.relX;
                 if (obX > camRight + 20 || obX + ob.w < camLeft - 20) return;
                 ctx.fillStyle = ob.hp === 2 ? "#556b2f" : "#7b8d42";
-                ctx.fillRect(obX, ob.y, ob.w, ob.h);
+                ctx.fillRect(obX | 0, ob.y | 0, ob.w, ob.h);
             });
 
             cZone.segments.forEach(s => {
-                ctx.fillStyle = s.color; ctx.fillRect(cZone.x, cZone.y + s.yOff, cZone.width, s.h);
-                ctx.fillStyle = "#fff"; ctx.font = "12px Arial"; ctx.fillText(s.text, cZone.x + 2, cZone.y + s.yOff + s.h / 2 + 5);
+                ctx.fillStyle = s.color; ctx.fillRect(cZone.x | 0, (cZone.y + s.yOff) | 0, cZone.width, s.h);
+                ctx.fillStyle = "#fff"; ctx.font = "12px Arial"; ctx.fillText(s.text, (cZone.x + 2) | 0, (cZone.y + s.yOff + s.h / 2 + 5) | 0);
             });
 
             if (GAME.state === 'aiming') {
                 let vX = GAME.cameraX + 350;
-                ctx.fillStyle = "rgba(255, 255, 255, 0.1)"; ctx.fillRect(vX, cZone.minY, 7, 380);
-                cZone.segments.forEach(s => { ctx.fillStyle = s.color; ctx.fillRect(vX, cZone.y + s.yOff, 7, s.h); });
+                ctx.fillStyle = "rgba(255, 255, 255, 0.1)"; ctx.fillRect(vX | 0, cZone.minY | 0, 7, 380);
+                cZone.segments.forEach(s => { ctx.fillStyle = s.color; ctx.fillRect(vX | 0, (cZone.y + s.yOff) | 0, 7, s.h); });
             }
 
             targetBlocks.forEach(b => {
                 if (b.x > camRight + 20 || b.x + b.w < camLeft - 20) return;
                 ctx.fillStyle = b.hp === 2 ? "#4a5a6a" : "#6c7a89";
-                ctx.fillRect(b.x, b.y, b.w, b.h);
+                ctx.fillRect(b.x | 0, b.y | 0, b.w, b.h);
             });
 
             let tData = TARGET_TYPES[player.targetEquipped]; let r = tData.weakRadius;
-            ctx.fillStyle = "#8a2be2"; ctx.beginPath(); ctx.arc(weakPoint.x, weakPoint.y, r, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = "#8a2be2"; ctx.beginPath(); ctx.arc(weakPoint.x | 0, weakPoint.y | 0, r, 0, Math.PI * 2); ctx.fill();
 
-            ctx.font = "bold 12px Arial"; ctx.fillStyle = "#000"; ctx.fillText(tData.name, weakPoint.x - 17, weakPoint.y + r + 16);
-            ctx.fillStyle = "#fff"; ctx.fillText(tData.name, weakPoint.x - 18, weakPoint.y + r + 15);
+            ctx.font = "bold 12px Arial"; ctx.fillStyle = "#000"; ctx.fillText(tData.name, (weakPoint.x - 17) | 0, (weakPoint.y + r + 16) | 0);
+            ctx.fillStyle = "#fff"; ctx.fillText(tData.name, (weakPoint.x - 18) | 0, (weakPoint.y + r + 15) | 0);
 
             function drawCannon(slotKey, cId) {
                 let slotPos = SLOTS[slotKey];
                 if (slotKey === 'slot2' && !player.slot2Unlocked) {
-                    ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.beginPath(); ctx.arc(slotPos.x, slotPos.y, 18, 0, Math.PI * 2); ctx.fill();
-                    ctx.font = "16px Arial"; ctx.textAlign = "center"; ctx.fillStyle = "#fff"; ctx.fillText("🔒", slotPos.x, slotPos.y + 6); ctx.textAlign = "left"; return;
+                    ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.beginPath(); ctx.arc(slotPos.x | 0, slotPos.y | 0, 18, 0, Math.PI * 2); ctx.fill();
+                    ctx.font = "16px Arial"; ctx.textAlign = "center"; ctx.fillStyle = "#fff"; ctx.fillText("🔒", slotPos.x | 0, (slotPos.y + 6) | 0); ctx.textAlign = "left"; return;
                 }
-                if (!cId) { ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.arc(slotPos.x, slotPos.y, 18, 0, Math.PI * 2); ctx.fill(); return; }
+                if (!cId) { ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.arc(slotPos.x | 0, slotPos.y | 0, 18, 0, Math.PI * 2); ctx.fill(); return; }
 
                 let cData = CANNONS[cId]; let pLevel = player.cannons[cId].level;
 
-                ctx.save(); ctx.translate(slotPos.x, slotPos.y); ctx.rotate(player.angle * PI_180);
+                ctx.save(); ctx.translate(slotPos.x | 0, slotPos.y | 0); ctx.rotate(player.angle * PI_180);
                 ctx.fillStyle = "#1a252f"; ctx.fillRect(0, -8, 35, 16);
                 ctx.restore();
 
-                ctx.fillStyle = cData.color; ctx.beginPath(); ctx.arc(slotPos.x, slotPos.y, 18, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = cData.color; ctx.beginPath(); ctx.arc(slotPos.x | 0, slotPos.y | 0, 18, 0, Math.PI * 2); ctx.fill();
 
                 ctx.font = "bold 13px Arial"; ctx.textAlign = "center";
-                ctx.fillStyle = "#000"; ctx.fillText(`Lv.${pLevel}`, slotPos.x + 1, slotPos.y + 36); ctx.fillStyle = "#fff"; ctx.fillText(`Lv.${pLevel}`, slotPos.x, slotPos.y + 35);
-                ctx.font = "bold 11px Arial"; ctx.fillStyle = "#000"; ctx.fillText(`[${slotKey === 'slot1' ? '1' : '2'}]`, slotPos.x + 1, slotPos.y - 23);
-                ctx.fillStyle = "#ffd700"; ctx.fillText(`[${slotKey === 'slot1' ? '1' : '2'}]`, slotPos.x, slotPos.y - 24); ctx.textAlign = "left";
+                ctx.fillStyle = "#000"; ctx.fillText(`Lv.${pLevel}`, (slotPos.x + 1) | 0, (slotPos.y + 36) | 0); ctx.fillStyle = "#fff"; ctx.fillText(`Lv.${pLevel}`, slotPos.x | 0, (slotPos.y + 35) | 0);
+                ctx.font = "bold 11px Arial"; ctx.fillStyle = "#000"; ctx.fillText(`[${slotKey === 'slot1' ? '1' : '2'}]`, (slotPos.x + 1) | 0, (slotPos.y - 23) | 0);
+                ctx.fillStyle = "#ffd700"; ctx.fillText(`[${slotKey === 'slot1' ? '1' : '2'}]`, slotPos.x | 0, (slotPos.y - 24) | 0); ctx.textAlign = "left";
             }
 
             drawCannon('slot1', player.equipped.slot1); drawCannon('slot2', player.equipped.slot2);
 
             if (player.isDragging) {
-                ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(player.x - 60, player.y - 55, 120, 8);
+                ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect((player.x - 60) | 0, (player.y - 55) | 0, 120, 8);
                 let pRatio = (player.power - 10) / 8;
-                ctx.fillStyle = `rgb(${255 * pRatio}, ${255 * (1 - pRatio)}, 0)`; ctx.fillRect(player.x - 60, player.y - 55, 120 * pRatio, 8);
+                ctx.fillStyle = `rgb(${255 * pRatio}, ${255 * (1 - pRatio)}, 0)`; ctx.fillRect((player.x - 60) | 0, (player.y - 55) | 0, 120 * pRatio, 8);
             }
 
-            // ★ [최적화 4] 투사체를 비싼 원형 렌더링(arc)에서 사각형 렌더링(fillRect)으로 교체
+            // ★ [최적화 5] 네 요구사항: 원형 대포알 복귀 (좌표는 정수 변환하여 안티앨리어싱 부하 최소화)
             projectiles.forEach(p => {
                 ctx.fillStyle = p.color;
                 ctx.beginPath();
-                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.arc(p.x | 0, p.y | 0, p.radius, 0, Math.PI * 2);
                 ctx.fill();
             });
 
             hitParticles.forEach(p => {
                 let curSize = p.size * (p.life / 50);
                 if (curSize > 0) {
-                    ctx.fillStyle = p.color; ctx.fillRect(p.x - curSize / 2, p.y - curSize / 2, curSize, curSize);
+                    ctx.fillStyle = p.color; 
+                    // 파티클은 사각형 유지(수십 개 터질 때 렉 방지)
+                    ctx.fillRect((p.x - curSize / 2) | 0, (p.y - curSize / 2) | 0, curSize, curSize);
                 }
             });
 
@@ -968,8 +980,8 @@
                 ctx.font = "bold 16px Arial";
                 floatingTexts.forEach(ft => {
                     ctx.globalAlpha = ft.life / 60;
-                    ctx.fillStyle = "#000"; ctx.fillText(ft.text, ft.x + 1, ft.y + 1);
-                    ctx.fillStyle = ft.color; ctx.fillText(ft.text, ft.x, ft.y);
+                    ctx.fillStyle = "#000"; ctx.fillText(ft.text, (ft.x + 1) | 0, (ft.y + 1) | 0);
+                    ctx.fillStyle = ft.color; ctx.fillText(ft.text, ft.x | 0, ft.y | 0);
                 });
                 ctx.globalAlpha = 1.0;
             }
