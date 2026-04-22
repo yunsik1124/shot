@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Project Color-Shot Prototype v8.2 (Full Version & Item Logic Fixed)</title>
+    <title>Project Color-Shot v8.6 (Ultimate Optimization & Hit Fix)</title>
     <style>
         /* 🎮 [기획 최적화] 모바일 꽉 찬 화면 및 주소창 잘림 방지 (100dvh) */
         body {
@@ -21,7 +21,7 @@
             overflow: hidden;
         }
 
-        /* ★ [비율 최적화] 잘림(Crop) 없이 화면에 꽉 차게 비율(9:16) 강제 유지 */
+        /* ★ [성능/비율 최적화] 하드웨어 가속(GPU) 강제 활성화 및 그림자 제거 */
         #game-container {
             position: relative;
             width: 100%;
@@ -30,13 +30,16 @@
             max-height: calc(100vw * (640 / 360));
             background-color: #e0e7ee;
             overflow: hidden;
-            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            transform: translateZ(0);
+            will-change: transform;
+            backface-visibility: hidden;
         }
 
         canvas {
             display: block;
             width: 100%;
             height: 100%;
+            transform: translateZ(0); /* 캔버스 GPU 가속 */
         }
 
         .ui-layer {
@@ -63,7 +66,6 @@
             font-size: 15px;
             margin-top: 5px;
             color: #333;
-            text-shadow: 1px 1px 2px white;
             font-weight: bold;
         }
 
@@ -84,12 +86,9 @@
             font-size: 11px;
             font-weight: bold;
             cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
             pointer-events: auto;
             transition: transform 0.1s, opacity 0.3s, background 0.3s;
             border: 2px solid #fff;
-            background-size: cover;
-            background-position: center;
             z-index: 20;
         }
 
@@ -105,47 +104,40 @@
 
             #itemBtn.active {
                 background: linear-gradient(135deg, #2ecc71, #27ae60);
-                box-shadow: 0 0 15px #2ecc71;
                 border-color: #fff;
             }
 
-            #itemBtn span {
-                text-shadow: 1px 1px 2px black;
-                z-index: 2;
-            }
-
+        /* ★ [최적화] 단색 가상 스틱 */
         .virtual-stick-guide {
             position: absolute;
             bottom: 105px;
             right: 20px;
             width: 70px;
             height: 70px;
-            background: rgba(0, 0, 0, 0.15);
+            background: rgba(255, 255, 255, 0.2);
             border-radius: 50%;
-            border: 2px dashed rgba(255, 255, 255, 0.4);
+            border: 2px solid rgba(255, 255, 255, 0.4);
             pointer-events: none;
             display: flex;
             justify-content: center;
             align-items: center;
             opacity: 0.5;
-            transition: opacity 0.3s, transform 0.2s;
+            transition: opacity 0.2s;
             z-index: 10;
         }
 
             .virtual-stick-guide::after {
                 content: '';
-                width: 30px;
-                height: 30px;
-                background: radial-gradient(circle at 30% 30%, #777, #222);
+                width: 34px;
+                height: 34px;
+                background: #444; /* 단색 노브 */
                 border-radius: 50%;
-                box-shadow: 0 4px 8px rgba(0,0,0,0.5);
-                border: 1px solid #111;
+                border: 2px solid #222;
             }
 
         #game-container.dragging .virtual-stick-guide {
             opacity: 1;
-            border-color: rgba(255, 255, 255, 0.9);
-            transform: scale(1.1);
+            background: rgba(255, 255, 255, 0.3);
         }
 
         .popup {
@@ -175,7 +167,6 @@
                 border-radius: 8px;
                 cursor: pointer;
                 transition: 0.2s;
-                box-shadow: 0 4px 6px rgba(0,0,0,0.3);
             }
 
                 .popup button:active {
@@ -190,7 +181,6 @@
 
             #menuUI h1 {
                 font-size: 36px;
-                text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
                 text-align: center;
                 margin-bottom: 5px;
                 color: #fff;
@@ -200,7 +190,6 @@
                 font-size: 14px;
                 color: #eee;
                 margin-bottom: 40px;
-                text-shadow: 1px 1px 2px black;
             }
 
         .menu-btn-group {
@@ -321,7 +310,7 @@
             <div class="virtual-stick-guide"></div>
 
             <div id="itemBtn" onclick="useItem()">
-                <span>  바람정지/  갯수x2</span>
+                <span>정지/x2</span>
                 <span id="itemCount" style="color:#ffeaa7;">0/3</span>
             </div>
         </div>
@@ -361,12 +350,10 @@
 
     <script>
         const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
+        // ★ 최적화: alpha false 처리로 모바일 브라우저의 배경 합성 연산 생략
+        const ctx = canvas.getContext('2d', { alpha: false });
         const gameContainer = document.getElementById('game-container');
 
-        // ==========================================
-        // 🎨 [에셋 매니저 시스템]
-        // ==========================================
         const ASSETS = { images: {}, sounds: {} };
 
         function loadImage(key, path) {
@@ -420,10 +407,11 @@
         const PHYSICS = { gravity: 0.05, windMulti: 0.0025 };
         let floatingTexts = []; let projectiles = []; let windParticles = []; let hitParticles = []; let clouds = [];
 
+        // ★ 무기 컬러: 화이트, 레드, 블루 단색 지정
         const CANNONS = {
-            normal: { id: 'normal', name: "노멀 대포", baseDmg: 100, radius: 12, color: "#2c3e50", unlockCost: 0 },
-            sniper: { id: 'sniper', name: "스나이퍼 대포", baseDmg: 140, radius: 5, color: "#c0392b", unlockCost: 500 },
-            buster: { id: 'buster', name: "버스터 대포", baseDmg: 80, radius: 20, color: "#2980b9", unlockCost: 1000 }
+            normal: { id: 'normal', name: "노멀 대포", baseDmg: 100, radius: 12, color: "#FFFFFF", unlockCost: 0 },
+            sniper: { id: 'sniper', name: "스나이퍼 대포", baseDmg: 140, radius: 5, color: "#FF3333", unlockCost: 500 },
+            buster: { id: 'buster', name: "버스터 대포", baseDmg: 80, radius: 20, color: "#3388FF", unlockCost: 1000 }
         };
 
         const TARGET_TYPES = {
@@ -515,29 +503,25 @@
         }
 
         function addFloatingText(x, y, text, color) { floatingTexts.push({ x, y, text, color, life: 60 }); }
+
         function createHitParticles(x, y, mainColor) {
             const colors = [mainColor, "#ecf0f1", "#bdc3c7"];
             for (let i = 0; i < 15; i++) { hitParticles.push({ x: x, y: y, vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8 - 2, life: 30 + Math.random() * 20, color: colors[Math.floor(Math.random() * colors.length)], size: Math.random() * 4 + 2 }); }
         }
 
-        // ==========================================
-        // 🛠️ [기획 최적화] 아이템 토글 버그 픽스
-        // ==========================================
         function useItem() {
             if (GAME.state !== 'aiming' || player.items.tactical <= 0) return;
 
             if (GAME.itemActive) {
-                // 이미 활성화된 상태라면 -> 취소 (토글 Off)
                 GAME.itemActive = false;
-                initTurnEnvironment(); // 풍속 재계산
+                initTurnEnvironment();
                 addFloatingText(player.x, player.y - 40, "아이템 취소", "#fff");
             } else {
-                // 활성화 시키기 (토글 On)
                 GAME.itemActive = true;
-                GAME.wind = 0; // 즉시 적용
+                GAME.wind = 0;
                 document.getElementById('uiWind').innerText = `🌬️ 날씨: 멈춤 (아이템 대기 중)`;
                 initWindParticles();
-                addFloatingText(player.x, player.y - 40, "날씨 정지 & 대포알 x2!", "#f39c12");
+                addFloatingText(player.x, player.y - 40, "정지 & x2 활성!", "#f39c12");
                 playSound('item');
             }
             updateUI();
@@ -620,21 +604,17 @@
         function startGame() {
             playSound('bgm');
             document.getElementById('menuUI').style.display = 'none'; document.getElementById('inGameUI').style.display = 'block';
-            GAME.turn = 1; GAME.totalDamage = 0; GAME.cameraX = 0; GAME.itemActive = false; // 게임 시작시 무조건 초기화
+            GAME.turn = 1; GAME.totalDamage = 0; GAME.cameraX = 0; GAME.itemActive = false;
             initClouds(); initTarget(); generateBZone(); initTurnEnvironment();
         }
 
-        // ==========================================
-        // 🛠️ [기획 최적화] 턴 초기화 로직 수정
-        // ==========================================
         function initTurnEnvironment() {
             projectiles = []; hitParticles = []; GAME.turnWaiting = false; GAME.state = 'aiming';
 
-            // 활성화된 상태에서 턴이 넘어왔거나 껐을 때를 대비
             if (!GAME.itemActive) {
                 GAME.wind = Math.floor(Math.random() * 11) - 5;
             } else {
-                GAME.wind = 0; // 아이템을 켜두고 안 쏘고 턴이 넘어가면 효과 유지
+                GAME.wind = 0;
             }
 
             let windText = GAME.wind === 0 ? "고요함" : (GAME.wind > 0 ? `우풍 ${GAME.wind}` : `좌풍 ${Math.abs(GAME.wind)}`);
@@ -642,19 +622,15 @@
             initWindParticles(); updateUI();
         }
 
-        // ==========================================
-        // 🛠️ [기획 최적화] 발사 시점 아이템 차감 로직
-        // ==========================================
         function fireProjectile() {
             GAME.state = 'flying'; triggerShake(5, 8); playSound('shoot');
             let cData = CANNONS[player.equipped]; let speedMult = player.power * 0.45;
 
             let shotCount = 1;
-            // 여기서 실제 발사가 이루어졌으므로 개수 차감 진행
             if (GAME.itemActive) {
                 shotCount = 2;
                 player.items.tactical--;
-                GAME.itemActive = false; // 일회성 효과 종료
+                GAME.itemActive = false;
             }
 
             for (let i = 0; i < shotCount; i++) {
@@ -684,7 +660,6 @@
             document.getElementById('uiScore').innerText = `점수: ${GAME.totalDamage}`; document.getElementById('uiGold').innerText = `💰 ${GAME.gold}`;
             let iBtn = document.getElementById('itemBtn'); document.getElementById('itemCount').innerText = `${player.items.tactical}/3`;
 
-            // 토글 UI 연출 변경
             if (GAME.itemActive) iBtn.classList.add('active');
             else iBtn.classList.remove('active');
 
@@ -720,7 +695,6 @@
 
             if (GAME.state === 'flying') {
                 let activeCount = 0; let leaderX = 0;
-                let activeTargetRadius = TARGET_TYPES[player.targetEquipped].weakRadius;
 
                 for (let i = 0; i < projectiles.length; i++) {
                     let p = projectiles[i]; if (!p.active) continue;
@@ -729,6 +703,7 @@
                     p.vy += PHYSICS.gravity; p.vx += (GAME.wind * PHYSICS.windMulti); p.x += p.vx; p.y += p.vy;
                     if (p.y > canvas.height || p.x > GAME.worldWidth) { p.active = false; continue; }
 
+                    // B-Zone (장애물/버프 존) 판정
                     if (p.x + p.radius > bZone.x && p.x - p.radius < bZone.x + bZone.width) {
                         let hitObstacle = false;
                         for (let j = 0; j < bZone.obstacleBlocks.length; j++) {
@@ -768,6 +743,7 @@
                         }
                     }
 
+                    // C-Zone (골드/수량 증폭 존) 판정
                     if (!p.passedCZone && p.x > cZone.x && p.x < cZone.x + cZone.width && p.y > cZone.y && p.y < cZone.y + cZone.height) {
                         p.passedCZone = true; let relY = p.y - cZone.y;
                         let hitSeg = cZone.segments.find(s => relY >= s.yOff && relY <= s.yOff + s.h);
@@ -781,30 +757,57 @@
                         }
                     }
 
-                    let hitBlock = targetBlocks.find(b => p.x > b.x && p.x < b.x + b.w && p.y > b.y && p.y < b.y + b.h);
-                    let dist = Math.hypot(p.x - weakPoint.x, p.y - weakPoint.y);
-                    let isWeak = dist <= activeTargetRadius;
+                    // ★ [최적화] 대포알 뭉침 타격 씹힘 방지 역순 루프 판정
+                    let hasHitAnyBlock = false;
+                    for (let j = targetBlocks.length - 1; j >= 0; j--) {
+                        let b = targetBlocks[j];
 
-                    if (hitBlock || isWeak) {
-                        p.active = false; let cData = CANNONS[player.equipped];
-                        triggerShake(isWeak ? 15 : 10, 15); createHitParticles(p.x, p.y, cData.color);
+                        if (p.x > b.x && p.x < b.x + b.w && p.y > b.y && p.y < b.y + b.h) {
+                            p.active = false;
+                            hasHitAnyBlock = true;
 
-                        if (hitBlock) {
-                            playSound('hit_rock'); hitBlock.hp -= 1;
-                            if (hitBlock.hp <= 0) { playSound('break_rock'); targetBlocks.splice(targetBlocks.indexOf(hitBlock), 1); }
+                            let cData = CANNONS[player.equipped];
+                            let pLevel = player.cannons[player.equipped].level;
+                            let mult = p.bType === 'dmg' ? p.bMult : 1;
+                            let finalDamage = Math.floor((cData.baseDmg + (pLevel * 10)) * mult);
+
+                            GAME.totalDamage += finalDamage;
+                            GAME.gold += Math.floor(finalDamage / 10) * (p.gMult || 1);
+
+                            playSound('hit_rock');
+                            createHitParticles(p.x, p.y, cData.color);
+                            addFloatingText(p.x, p.y - 15, `🎯 ${finalDamage}`, "#ffff00");
+
+                            b.hp -= 1;
+                            if (b.hp <= 0) {
+                                playSound('break_rock');
+                                targetBlocks.splice(j, 1);
+                            }
+                            saveLocalData();
+                            break; // 하나의 대포알은 하나의 블록만 타격
                         }
+                    }
 
-                        let mult = p.bType === 'dmg' ? p.bMult : 1; let pLevel = player.cannons[player.equipped].level;
-                        let currentBaseDamage = cData.baseDmg + (pLevel * 10);
-                        let finalDamage = Math.floor(currentBaseDamage * mult * (isWeak ? 2.5 : 1.0));
+                    // 블록을 안 치고 약점에 맞은 경우
+                    if (!hasHitAnyBlock && p.active) {
+                        let dist = Math.hypot(p.x - weakPoint.x, p.y - weakPoint.y);
+                        let activeTargetRadius = TARGET_TYPES[player.targetEquipped].weakRadius;
 
-                        GAME.totalDamage += finalDamage;
-                        let earnedGold = Math.floor(finalDamage / 10) * p.gMult;
-                        GAME.gold += earnedGold;
-                        if (earnedGold > 0) playSound('gold');
+                        if (dist <= activeTargetRadius) {
+                            p.active = false;
+                            let cData = CANNONS[player.equipped];
+                            let pLevel = player.cannons[player.equipped].level;
+                            let mult = p.bType === 'dmg' ? p.bMult : 1;
+                            let finalDamage = Math.floor((cData.baseDmg + (pLevel * 10)) * mult * 2.5);
 
-                        saveLocalData();
-                        addFloatingText(p.x, p.y - 15, isWeak ? `💥 Critical! ${finalDamage}` : `🎯 ${finalDamage}`, isWeak ? "#ff00ff" : "#ffff00");
+                            GAME.totalDamage += finalDamage;
+                            GAME.gold += Math.floor(finalDamage / 10) * (p.gMult || 1);
+
+                            triggerShake(15, 15);
+                            createHitParticles(p.x, p.y, cData.color);
+                            addFloatingText(p.x, p.y - 15, `💥 Critical! ${finalDamage}`, "#ff00ff");
+                            saveLocalData();
+                        }
                     }
                 }
 
@@ -814,7 +817,11 @@
         }
 
         function drawScene() {
+            // ★ [최적화] 캔버스 물리적 초기화로 잔상 완벽 제거
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#e0e7ee";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
             let sx = 0; let sy = 0;
             if (CAMERA.shakeFrames > 0) { sx = (Math.random() - 0.5) * CAMERA.shakeIntensity; sy = (Math.random() - 0.5) * CAMERA.shakeIntensity; }
 
@@ -825,8 +832,6 @@
             if (bgImg && bgImg.complete && bgImg.naturalWidth > 0) {
                 ctx.save(); let parallaxX = GAME.cameraX * 0.2; ctx.translate(GAME.cameraX - parallaxX, 0);
                 ctx.drawImage(bgImg, 0, 0, GAME.worldWidth + 200, canvas.height); ctx.restore();
-            } else {
-                ctx.fillStyle = "#e0e7ee"; ctx.fillRect(GAME.cameraX, 0, canvas.width, canvas.height);
             }
 
             let cloudImg = ASSETS.images.cloud;
@@ -843,8 +848,11 @@
             });
             ctx.restore();
 
+            // 바람 효과 최적화
             if (GAME.wind !== 0 && GAME.state !== 'menu') {
-                ctx.strokeStyle = "rgba(100,100,100,0.5)"; ctx.lineWidth = 1.5; ctx.beginPath();
+                ctx.strokeStyle = "#b0bec5";
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
                 windParticles.forEach(wp => {
                     let dir = GAME.wind > 0 ? 1 : -1; wp.x += (wp.speed * dir);
                     if (dir > 0 && wp.x > GAME.worldWidth) wp.x = 0; if (dir < 0 && wp.x < 0) wp.x = GAME.worldWidth;
@@ -922,8 +930,10 @@
             let tData = TARGET_TYPES[player.targetEquipped]; let coreImg = ASSETS.images[tData.imgKey]; let r = tData.weakRadius;
             if (coreImg && coreImg.complete && coreImg.naturalWidth > 0) { ctx.drawImage(coreImg, weakPoint.x - r, weakPoint.y - r, r * 2, r * 2); }
             else { ctx.fillStyle = "#8a2be2"; ctx.beginPath(); ctx.arc(weakPoint.x, weakPoint.y, r, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "#ff00ff"; ctx.lineWidth = 2; ctx.stroke(); }
-            ctx.fillStyle = "#fff"; ctx.font = "bold 12px Arial"; ctx.shadowColor = "#000"; ctx.shadowBlur = 3;
-            ctx.fillText(tData.name, weakPoint.x - 18, weakPoint.y + r + 15); ctx.shadowBlur = 0;
+
+            ctx.font = "bold 12px Arial";
+            ctx.fillStyle = "#000"; ctx.fillText(tData.name, weakPoint.x - 17, weakPoint.y + r + 16);
+            ctx.fillStyle = "#fff"; ctx.fillText(tData.name, weakPoint.x - 18, weakPoint.y + r + 15);
 
             let cData = CANNONS[player.equipped]; let pLevel = player.cannons[player.equipped].level;
             let baseImg = ASSETS.images.cannon_base; let barrelImg = ASSETS.images.cannon_barrel;
@@ -936,8 +946,10 @@
             if (baseImg && baseImg.complete && baseImg.naturalWidth > 0) { ctx.drawImage(baseImg, player.x - 20, player.y - 20, 40, 40); }
             else { ctx.fillStyle = cData.color; ctx.beginPath(); ctx.arc(player.x, player.y, 18, 0, Math.PI * 2); ctx.fill(); }
 
-            ctx.fillStyle = "#333"; ctx.font = "bold 13px Arial"; ctx.textAlign = "center";
-            ctx.fillText(`Lv.${pLevel}`, player.x, player.y + 35); ctx.textAlign = "left";
+            ctx.font = "bold 13px Arial"; ctx.textAlign = "center";
+            ctx.fillStyle = "#000"; ctx.fillText(`Lv.${pLevel}`, player.x + 1, player.y + 36);
+            ctx.fillStyle = "#fff"; ctx.fillText(`Lv.${pLevel}`, player.x, player.y + 35);
+            ctx.textAlign = "left";
 
             if (player.isDragging) {
                 ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(player.x - 60, player.y - 55, 120, 8);
@@ -945,10 +957,13 @@
                 ctx.fillStyle = `rgb(${255 * pRatio}, ${255 * (1 - pRatio)}, 0)`; ctx.fillRect(player.x - 60, player.y - 55, 120 * pRatio, 8);
             }
 
+            // ★ [최적화] 대포알 완벽한 단색(Solid) 원으로만 그리기
             projectiles.forEach(p => {
                 if (p.active) {
-                    ctx.fillStyle = "rgba(255, 255, 255, 0.9)"; ctx.shadowBlur = 10; ctx.shadowColor = cData.color;
-                    ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+                    ctx.fillStyle = cData.color;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fill();
                 }
             });
 
@@ -958,8 +973,16 @@
             });
 
             floatingTexts.forEach(ft => {
-                ctx.fillStyle = ft.color; ctx.font = "bold 16px Arial"; ctx.shadowColor = "black"; ctx.shadowBlur = 3; ctx.globalAlpha = ft.life / 60;
-                ctx.fillText(ft.text, ft.x, ft.y); ctx.globalAlpha = 1.0; ctx.shadowBlur = 0;
+                ctx.font = "bold 16px Arial";
+                ctx.globalAlpha = ft.life / 60;
+
+                ctx.fillStyle = "#000";
+                ctx.fillText(ft.text, ft.x + 1, ft.y + 1);
+
+                ctx.fillStyle = ft.color;
+                ctx.fillText(ft.text, ft.x, ft.y);
+
+                ctx.globalAlpha = 1.0;
             });
 
             ctx.restore();
