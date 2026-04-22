@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Project Color-Shot v8.8.7 (Zero Dummy Assets)</title>
+    <title>Project Color-Shot v8.8.8 (Performance Optimized)</title>
     <style>
         /* 🎮 모바일 꽉 찬 화면 및 스크롤 바운스 완벽 차단 */
         body {
@@ -381,6 +381,12 @@
         const gameContainer = document.getElementById('game-container');
         const bgLayer = document.getElementById('bg-layer');
 
+        // ★ [최적화 1] DOM 캐싱 (실시간 탐색 방지)
+        const UI_CACHE = {
+            score: document.getElementById('uiScore'),
+            gold: document.getElementById('uiGold')
+        };
+
         const ASSETS = { images: {}, sounds: {} };
         const PI_180 = Math.PI / 180;
 
@@ -395,11 +401,9 @@
             ASSETS.sounds[key] = audio;
         }
 
-        // ★ [최적화 1] 실제로 존재하는 2개 이미지만 남기고, 더미(404 에러) 호출 전부 삭제!
         loadImage('ground_start', 'ground_start.png');
         loadImage('ground_end', 'ground_end.png');
 
-        // ★ [최적화 2] 실제로 존재하는 사운드만 남기고 호출 삭제!
         loadSound('bgm', 'bgm_battle_loop.mp3');
         loadSound('shoot', 'sfx_shoot_normal.wav');
         loadSound('hit_rock', 'sfx_hit_rock.wav');
@@ -411,12 +415,9 @@
         const audioThrottle = {};
         function playSound(key) {
             let audio = ASSETS.sounds[key];
-            if (!audio || audio.readyState < 2) return; // 없는 사운드 호출 시 안전하게 무시
+            if (!audio || audio.readyState < 2) return;
 
-            if (key === 'bgm') {
-                // 모바일 자동재생 에러 방지 위해 주석 유지
-                return;
-            }
+            if (key === 'bgm') return;
 
             const now = Date.now();
             if (audioThrottle[key] && now - audioThrottle[key] < 100) return;
@@ -688,11 +689,14 @@
             if (player.items.tactical === 0 || GAME.state !== 'aiming') iBtn.classList.add('disabled'); else iBtn.classList.remove('disabled');
         }
 
+        // ★ [최적화 2] 실시간 UI 업데이트 DOM 탐색 방지
         function updateRealtimeScoreUI() {
-            if (GAME.totalDamage !== GAME._lastDmg || GAME.gold !== GAME._lastGold) {
-                document.getElementById('uiScore').innerText = `점수: ${GAME.totalDamage}`;
-                document.getElementById('uiGold').innerText = `💰 ${GAME.gold}`;
+            if (GAME.totalDamage !== GAME._lastDmg) {
+                UI_CACHE.score.innerText = `점수: ${GAME.totalDamage}`;
                 GAME._lastDmg = GAME.totalDamage;
+            }
+            if (GAME.gold !== GAME._lastGold) {
+                UI_CACHE.gold.innerText = `💰 ${GAME.gold}`;
                 GAME._lastGold = GAME.gold;
             }
         }
@@ -709,15 +713,23 @@
             bZone.x += bZone.speed * bZone.dir; if (bZone.x < bZone.minX || bZone.x > bZone.maxX) bZone.dir *= -1;
             cZone.y += cZone.speed * cZone.dir; if (cZone.y < cZone.minY || cZone.y + cZone.height > cZone.maxY) cZone.dir *= -1;
 
+            // ★ [최적화 3-1] 배열 삭제 O(1) 스왑 방식 적용
             for (let i = floatingTexts.length - 1; i >= 0; i--) {
                 let ft = floatingTexts[i]; ft.y -= 1; ft.life--;
-                if (ft.life <= 0) floatingTexts.splice(i, 1);
+                if (ft.life <= 0) {
+                    floatingTexts[i] = floatingTexts[floatingTexts.length - 1];
+                    floatingTexts.pop();
+                }
             }
 
+            // ★ [최적화 3-2] 배열 삭제 O(1) 스왑 방식 적용
             for (let i = hitParticles.length - 1; i >= 0; i--) {
                 let p = hitParticles[i];
                 p.vy += PHYSICS.gravity; p.x += p.vx; p.y += p.vy; p.life--;
-                if (p.life <= 0) hitParticles.splice(i, 1);
+                if (p.life <= 0) {
+                    hitParticles[i] = hitParticles[hitParticles.length - 1];
+                    hitParticles.pop();
+                }
             }
 
             if (player.isDragging) { if (player.powerDir > 0) { player.power += 0.075; if (player.power >= 18) { player.power = 18; player.powerDir = 0; } } }
@@ -824,8 +836,12 @@
                     }
                 }
 
+                // ★ [최적화 3-3] 배열 삭제 O(1) 스왑 방식 적용
                 for (let i = projectiles.length - 1; i >= 0; i--) {
-                    if (!projectiles[i].active) projectiles.splice(i, 1);
+                    if (!projectiles[i].active) {
+                        projectiles[i] = projectiles[projectiles.length - 1];
+                        projectiles.pop();
+                    }
                 }
 
                 if (activeCount > 0) GAME.cameraX = Math.max(0, Math.min(leaderX - 180, GAME.worldWidth - canvas.width));
@@ -868,7 +884,6 @@
             if (gEnd && gEnd.ready) { ctx.drawImage(gEnd, 500, 480, 350, 160); }
             else { ctx.fillStyle = "#c5d3df"; ctx.beginPath(); ctx.moveTo(500, 640); ctx.quadraticCurveTo(650, 480, 850, 550); ctx.lineTo(850, 640); ctx.fill(); }
 
-            // ★ [최적화 3] 없는 이미지 검사(Fallback) 싹 걷어내고 순수 도형 렌더링으로 직결!
             bZone.segments.forEach(s => {
                 ctx.fillStyle = s.color; ctx.fillRect(bZone.x, s.y, bZone.width, s.height);
                 ctx.fillStyle = "#fff"; ctx.font = "11px Arial"; ctx.fillText(s.text, bZone.x + 2, s.y + s.height / 2);
@@ -934,8 +949,10 @@
                 ctx.fillStyle = `rgb(${255 * pRatio}, ${255 * (1 - pRatio)}, 0)`; ctx.fillRect(player.x - 60, player.y - 55, 120 * pRatio, 8);
             }
 
+            // ★ [최적화 4] 투사체를 비싼 원형 렌더링(arc)에서 사각형 렌더링(fillRect)으로 교체
             projectiles.forEach(p => {
-                ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = p.color;
+                ctx.fillRect(p.x - p.radius, p.y - p.radius, p.radius * 2, p.radius * 2);
             });
 
             hitParticles.forEach(p => {
