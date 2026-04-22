@@ -3,31 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Project Color-Shot Prototype v7.1 (Final Polish)</title>
+    <title>Project Color-Shot Prototype v8.0 (Masterpiece Edition)</title>
     <style>
+        /* 🎮 [기획 최적화] 모바일 꽉 찬 화면 및 주소창 잘림 방지 (100dvh) */
         body {
             margin: 0;
             padding: 0;
-            background-color: #1a1a1a;
+            background-color: #111;
             display: flex;
             justify-content: center;
             align-items: center;
+            width: 100vw;
             height: 100vh;
+            height: 100dvh;
             touch-action: none;
             font-family: 'Malgun Gothic', sans-serif;
+            overflow: hidden; /* 모바일에서 불필요한 스크롤 완벽 차단 */
         }
 
+        /* 게임 컨테이너가 화면 전체를 덮도록 수정 */
         #game-container {
             position: relative;
-            width: 360px;
-            height: 640px;
+            width: 100%;
+            max-width: 600px; /* 태블릿/PC 대응용 최대 너비 지정 */
+            height: 100%;
             background-color: #e0e7ee;
             overflow: hidden;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
         }
 
+        /* 캔버스가 부모 컨테이너 비율에 맞춰 꽉 차게 동적 스케일링 됨 */
         canvas {
             display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
 
         .ui-layer {
@@ -42,30 +52,31 @@
         .top-bar {
             display: flex;
             justify-content: space-between;
-            padding: 10px;
+            padding: 15px 10px;
             color: #333;
             font-weight: bold;
-            background: rgba(255,255,255,0.7);
+            background: linear-gradient(to bottom, rgba(255,255,255,0.9), rgba(255,255,255,0));
             font-size: 13px;
         }
 
         .wind-indicator {
             text-align: center;
-            font-size: 14px;
+            font-size: 15px;
             margin-top: 5px;
-            color: #555;
+            color: #333;
             text-shadow: 1px 1px 2px white;
             font-weight: bold;
         }
 
+        /* 🎮 [기획 수정] 아이템 버튼 - 스틱과 완전 독립 (우측 하단 앵커) */
         #itemBtn {
             position: absolute;
-            bottom: 20px;
-            right: 20px;
+            bottom: 25px;
+            right: 25px;
             background: linear-gradient(135deg, #f39c12, #d35400);
             color: white;
             border-radius: 50%;
-            width: 60px;
+            width: 60px; /* 터치 미스를 줄이기 위해 살짝 확대 */
             height: 60px;
             display: flex;
             flex-direction: column;
@@ -76,10 +87,11 @@
             cursor: pointer;
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
             pointer-events: auto;
-            transition: transform 0.1s;
+            transition: transform 0.1s, opacity 0.3s;
             border: 2px solid #fff;
             background-size: cover;
             background-position: center;
+            z-index: 20; /* 스틱보다 우선 순위 */
         }
 
             #itemBtn:active {
@@ -88,7 +100,7 @@
 
             #itemBtn.disabled {
                 cursor: not-allowed;
-                opacity: 0.5;
+                opacity: 0.3;
                 filter: grayscale(100%);
             }
 
@@ -96,6 +108,41 @@
                 text-shadow: 1px 1px 2px black;
                 z-index: 2;
             }
+
+        /* 🎮 [기획 수정] 가상 스틱 - 아이템 버튼 상단으로 이동 및 간섭 제거 */
+        .virtual-stick-guide {
+            position: absolute;
+            bottom: 105px; /* 아이템 버튼 위로 안전하게 안착 */
+            right: 20px;
+            width: 70px;
+            height: 70px;
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 50%;
+            border: 2px dashed rgba(255, 255, 255, 0.4);
+            pointer-events: none; /* 터치 방해 금지 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0.5;
+            transition: opacity 0.3s, transform 0.2s;
+            z-index: 10;
+        }
+
+            .virtual-stick-guide::after {
+                content: '';
+                width: 30px;
+                height: 30px;
+                background: radial-gradient(circle at 30% 30%, #777, #222);
+                border-radius: 50%;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+                border: 1px solid #111;
+            }
+
+        #game-container.dragging .virtual-stick-guide {
+            opacity: 1;
+            border-color: rgba(255, 255, 255, 0.9);
+            transform: scale(1.1);
+        }
 
         .popup {
             display: none;
@@ -110,12 +157,13 @@
             justify-content: center;
             align-items: center;
             color: white;
+            z-index: 100;
         }
 
             .popup button {
                 margin-top: 10px;
-                padding: 10px 20px;
-                font-size: 14px;
+                padding: 12px 25px;
+                font-size: 15px;
                 font-weight: bold;
                 border: none;
                 background-color: #5b8fb9;
@@ -123,6 +171,7 @@
                 border-radius: 8px;
                 cursor: pointer;
                 transition: 0.2s;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.3);
             }
 
                 .popup button:active {
@@ -130,42 +179,35 @@
                 }
 
         #menuUI {
-            background: transparent;
-            justify-content: flex-start;
-            padding-top: 80px;
+            background: radial-gradient(circle, #2c3e50, #000);
+            justify-content: center;
         }
 
             #menuUI h1 {
-                font-size: 36px;
+                font-size: 42px;
                 text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
                 text-align: center;
                 margin-bottom: 5px;
-                color: #fff;
+                color: #f1c40f;
             }
 
             #menuUI .nickname {
-                font-size: 14px;
-                color: #eee;
+                font-size: 16px;
+                color: #bdc3c7;
                 margin-bottom: 40px;
-                text-shadow: 1px 1px 2px black;
             }
 
         .menu-btn-group {
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            width: 60%;
+            gap: 15px;
+            width: 70%;
         }
 
         #shopPopup {
             justify-content: flex-start;
             padding-top: 30px;
         }
-
-            #shopPopup h2 {
-                margin-top: 0;
-                margin-bottom: 5px;
-            }
 
         .shop-tabs {
             display: flex;
@@ -176,8 +218,8 @@
 
             .shop-tabs button {
                 flex: 1;
-                padding: 8px 0;
-                font-size: 12px;
+                padding: 10px 0;
+                font-size: 13px;
                 margin-top: 0;
                 background-color: #34495e;
                 border-radius: 5px 5px 0 0;
@@ -190,7 +232,7 @@
 
         .shop-list {
             width: 100%;
-            max-height: 400px;
+            max-height: 60%;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
@@ -210,7 +252,6 @@
             .shop-item.locked {
                 opacity: 0.5;
                 background: rgba(100,100,100,0.2);
-                border: 1px dashed rgba(255,255,255,0.3);
             }
 
         .item-name {
@@ -246,7 +287,6 @@
                 margin: 0 0 10px 0;
                 text-align: center;
                 color: #ffd700;
-                font-size: 18px;
             }
 
         .rank-item {
@@ -264,13 +304,16 @@
         <div class="ui-layer" id="inGameUI" style="display:none;">
             <div class="top-bar">
                 <span id="uiNickname">유저명</span>
-                <span id="uiTurn">Turn: 1/10</span>
+                <span id="uiTurn" style="color:#e74c3c;">Turn: 1/10</span>
                 <span>
                     <span id="uiScore" style="margin-right: 8px;">점수: 0</span>
                     <span id="uiGold">💰 0</span>
                 </span>
             </div>
             <div class="wind-indicator" id="uiWind">🌬️ 풍속: 0</div>
+
+            <div class="virtual-stick-guide"></div>
+
             <div id="itemBtn" onclick="useItem()">
                 <span>정지/x2</span>
                 <span id="itemCount" style="color:#ffeaa7;">0/3</span>
@@ -281,13 +324,13 @@
             <h1>Color-Shot</h1>
             <div class="nickname" id="menuNickname">로딩중...</div>
             <div class="menu-btn-group">
-                <button onclick="startGame()" style="padding: 15px; font-size:18px;">게임 시작</button>
-                <button onclick="openShop()" style="background-color: #9b59b6; padding: 15px;">상점 (무기/타겟/아이템)</button>
+                <button onclick="startGame()" style="padding: 18px; font-size:20px; background:#e67e22;">🎮 게임 시작</button>
+                <button onclick="openShop()" style="background-color: #8e44ad; padding: 15px;">🛒 상점 (무기/타겟/아이템)</button>
             </div>
         </div>
 
         <div class="popup" id="shopPopup">
-            <h2>종합 상점</h2>
+            <h2 style="margin-top: 0; margin-bottom: 5px;">종합 상점</h2>
             <p id="shopGold" style="margin-bottom: 10px; font-weight:bold; color:#ffd700;">보유 재화: 💰 0</p>
             <div class="shop-tabs">
                 <button id="tabCannon" class="active" onclick="changeShopTab('cannon')">대포</button>
@@ -295,42 +338,38 @@
                 <button id="tabItem" onclick="changeShopTab('item')">소모품</button>
             </div>
             <div class="shop-list" id="shopListContainer"></div>
-            <button onclick="closeShop()" style="background-color: #aaa; margin-top: 15px;">로비로 돌아가기</button>
+            <button onclick="closeShop()" style="background-color: #aaa; margin-top: 15px; width:80%;">로비로 돌아가기</button>
         </div>
 
         <div class="popup" id="resultPopup">
             <h2>게임 종료</h2>
-            <p id="resultScorePop" style="margin:5px 0; font-size: 18px;">이번 판 점수: 0</p>
-            <p id="resultGoldText" style="margin:5px 0 10px 0; color:#ffd700;">누적 보유 재화: 0</p>
+            <p id="resultScorePop" style="margin:5px 0; font-size: 20px; color:#f1c40f;">이번 판 점수: 0</p>
+            <p id="resultGoldText" style="margin:5px 0 10px 0; color:#ddd;">누적 보유 재화: 0</p>
             <div class="ranking-board">
                 <h3>🏆 주간 TOP 5 랭킹</h3>
                 <div id="mockRanking"></div>
             </div>
-            <button onclick="returnToMenu()" style="padding:12px 30px;">로비로 돌아가기</button>
+            <button onclick="returnToMenu()" style="padding:15px 40px; background:#e74c3c;">로비로 돌아가기</button>
         </div>
     </div>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        const gameContainer = document.getElementById('game-container');
 
         // ==========================================
-        // 🎨 [천재 기획자의 에셋 매니저 시스템]
+        // 🎨 [에셋 매니저 시스템]
         // ==========================================
         const ASSETS = { images: {}, sounds: {} };
 
         function loadImage(key, path) {
-            let img = new Image();
-            img.src = `img/${path}`;
-            ASSETS.images[key] = img;
+            let img = new Image(); img.src = `img/${path}`; ASSETS.images[key] = img;
         }
-
         function loadSound(key, path) {
-            let audio = new Audio(`sound/${path}`);
-            ASSETS.sounds[key] = audio;
+            let audio = new Audio(`sound/${path}`); ASSETS.sounds[key] = audio;
         }
 
-        // 이미지 에셋
         loadImage('bg', 'bg_stage_01.png');
         loadImage('cloud', 'cloud.png');
         loadImage('ground_start', 'ground_start.png');
@@ -349,7 +388,6 @@
         loadImage('core_s4', 'target_core_s4.png');
         loadImage('core_s5', 'target_core_s5.png');
 
-        // 사운드 에셋
         loadSound('bgm', 'bgm_battle_loop.mp3');
         loadSound('shoot', 'sfx_shoot_normal.wav');
         loadSound('hit_rock', 'sfx_hit_rock.wav');
@@ -360,21 +398,11 @@
         loadSound('gold', 'sfx_coin_get.wav');
         loadSound('item', 'sfx_item_tactical.wav');
 
-        const itemBtnImg = new Image();
-        itemBtnImg.src = 'img/icon_item_time.png';
-        itemBtnImg.onload = () => { document.getElementById('itemBtn').style.backgroundImage = `url('${itemBtnImg.src}')`; };
-
-        // ★ 볼륨 밸런스 패치 적용
         function playSound(key) {
             let audio = ASSETS.sounds[key];
             if (audio && audio.readyState >= 2) {
                 let clone = audio.cloneNode();
-                if (key === 'bgm') {
-                    clone.loop = true;
-                    clone.volume = 0.3; // 배경음 잔잔하게
-                } else {
-                    clone.volume = 0.6; // 효과음 적당하게
-                }
+                if (key === 'bgm') { clone.loop = true; clone.volume = 0.4; }
                 clone.play().catch(e => { /* 무시 */ });
             }
         }
@@ -384,8 +412,7 @@
 
         const GAME = { state: 'menu', turn: 1, maxTurns: 10, totalDamage: 0, gold: 0, nickname: "", wind: 0, cameraX: 0, worldWidth: 850, turnWaiting: false, itemActive: false };
         const PHYSICS = { gravity: 0.05, windMulti: 0.0025 };
-        let floatingTexts = []; let projectiles = []; let windParticles = []; let hitParticles = [];
-        let clouds = [];
+        let floatingTexts = []; let projectiles = []; let windParticles = []; let hitParticles = []; let clouds = [];
 
         const CANNONS = {
             normal: { id: 'normal', name: "노멀 대포", baseDmg: 100, radius: 12, color: "#2c3e50", unlockCost: 0 },
@@ -401,26 +428,19 @@
             size5: { id: 'size5', name: 'Size 5', weakRadius: 50, cost: 15000, imgKey: 'core_s5' }
         };
 
+        // ★ [기획 세팅] 최초 신규 아이디 부여 시 전술 아이템(tactical) 3개를 기본값으로 세팅
         const player = {
             x: 50, y: 550, angle: -45, power: 10, powerDir: 1, isDragging: false,
             equipped: 'normal',
             cannons: { normal: { level: 1, unlocked: true }, sniper: { level: 1, unlocked: false }, buster: { level: 1, unlocked: false } },
             targetEquipped: 'size1', targets: { size1: true, size2: false, size3: false, size4: false, size5: false },
-            items: { tactical: 0 }
+            items: { tactical: 3 } // 신규 유저 아이템 3개 기본 탑재
         };
 
         let currentShopTab = 'cannon';
         let bZone = { x: 280, width: 40, dir: 1, speed: 0.4, minX: 200, maxX: 380, segments: [], obstacleBlocks: [] };
-        let cZone = {
-            x: 500, y: 300, width: 25, height: 120, dir: 1, speed: 0.8, minY: 100, maxY: 480,
-            segments: [
-                { type: 'goldMult', text: '💰 x2', color: 'rgba(50, 255, 50, 0.5)', yOff: 0, h: 60 },
-                { type: 'qty4', text: 'x4', color: 'rgba(255, 215, 0, 0.6)', yOff: 60, h: 60 }
-            ]
-        };
-
-        let targetBlocks = [];
-        const weakPoint = { x: 630, y: 510 };
+        let cZone = { x: 500, y: 300, width: 25, height: 120, dir: 1, speed: 0.8, minY: 100, maxY: 480, segments: [{ type: 'goldMult', text: '💰 x2', color: 'rgba(50, 255, 50, 0.5)', yOff: 0, h: 60 }, { type: 'qty4', text: 'x4', color: 'rgba(255, 215, 0, 0.6)', yOff: 60, h: 60 }] };
+        let targetBlocks = []; const weakPoint = { x: 630, y: 510 };
 
         function initTarget() {
             targetBlocks = [];
@@ -428,46 +448,44 @@
             const currentRadius = TARGET_TYPES[player.targetEquipped].weakRadius;
             const startX = weakPoint.x + currentRadius - 5;
 
-            // 🎯 여백 제거 로직
             for (let c = 0; c < 5; c++) {
                 for (let r = 0; r < 10; r++) {
                     targetBlocks.push({ x: startX + c * 20, y: weakPoint.y - 120 + r * 20, w: 20, h: 20, hp: getRandomHP() });
                 }
             }
-
             const topY = weakPoint.y - 120;
             for (let c = 0; c < 12; c++) {
                 targetBlocks.push({ x: (startX - 180) + c * 20, y: topY, w: 20, h: 20, hp: getRandomHP() });
             }
-
             for (let c = 0; c < 3; c++) {
                 targetBlocks.push({ x: weakPoint.x + (currentRadius / 2) + c * 20, y: weakPoint.y - 10, w: 20, h: 20, hp: getRandomHP() });
             }
         }
 
-        // ☁️ 구름 초기화
         function initClouds() {
             clouds = [];
             for (let i = 0; i < 6; i++) {
-                clouds.push({
-                    x: Math.random() * GAME.worldWidth,
-                    y: Math.random() * 200 + 20,
-                    w: 80 + Math.random() * 60,
-                    h: 40 + Math.random() * 30,
-                    baseSpeed: (Math.random() * 0.3 + 0.1)
-                });
+                clouds.push({ x: Math.random() * GAME.worldWidth, y: Math.random() * 200 + 20, w: 80 + Math.random() * 60, h: 40 + Math.random() * 30, baseSpeed: (Math.random() * 0.3 + 0.1) });
             }
         }
 
         function loadLocalData() {
             let savedName = localStorage.getItem("colorShot_nick");
-            if (!savedName) { savedName = "Player_" + Math.floor(Math.random() * 9999); localStorage.setItem("colorShot_nick", savedName); }
+            if (!savedName) {
+                // 신규 유저 최초 접속 로직
+                savedName = "Player_" + Math.floor(Math.random() * 9999);
+                localStorage.setItem("colorShot_nick", savedName);
+                // 생성된 신규 유저에게 아이템 3개 상태를 저장하여 확정
+                localStorage.setItem("colorShot_items", JSON.stringify(player.items));
+            }
             GAME.nickname = savedName;
             if (localStorage.getItem("colorShot_gold")) GAME.gold = parseInt(localStorage.getItem("colorShot_gold"));
             if (localStorage.getItem("colorShot_cannons")) player.cannons = JSON.parse(localStorage.getItem("colorShot_cannons"));
             if (localStorage.getItem("colorShot_equipped")) player.equipped = localStorage.getItem("colorShot_equipped");
             if (localStorage.getItem("colorShot_targets")) player.targets = JSON.parse(localStorage.getItem("colorShot_targets"));
             if (localStorage.getItem("colorShot_targetEquipped")) player.targetEquipped = localStorage.getItem("colorShot_targetEquipped");
+
+            // 기존 유저의 아이템 로드 (최초 접속이 아니면 저장된 값을 불러옴)
             if (localStorage.getItem("colorShot_items")) player.items = JSON.parse(localStorage.getItem("colorShot_items"));
         }
 
@@ -543,15 +561,15 @@
                     let div = document.createElement('div'); div.className = `shop-item ${!isUnlocked ? 'locked' : ''}`;
                     let title = isUnlocked ? `${tData.name}` : `🔒 ${tData.name}`;
                     if (isEquipped) title += " <span style='color:#2ecc71;'>[장착중]</span>";
-                    let html = `<div class="item-name">${title}</div><div class="item-desc">약점 크기 반경: ${tData.weakRadius}px<br>${!isUnlocked ? `구매 비용: ${tData.cost}G` : '구매 완료'}</div><div style="margin:10px auto; width:${tData.weakRadius * 2}px; height:${tData.weakRadius * 2}px; background:#8a2be2; border:2px solid #ff00ff; border-radius:50%;"></div><div class="btn-group">`;
+                    let html = `<div class="item-name">${title}</div><div class="item-desc">약점 반경: ${tData.weakRadius}px<br>${!isUnlocked ? `구매: ${tData.cost}G` : '구매 완료'}</div><div style="margin:10px auto; width:${tData.weakRadius * 2}px; height:${tData.weakRadius * 2}px; background:#8a2be2; border:2px solid #ff00ff; border-radius:50%;"></div><div class="btn-group">`;
                     if (!isUnlocked) html += `<button onclick="buyFeature('target', '${key}', ${tData.cost})">구매하기</button>`;
                     else if (!isEquipped) html += `<button onclick="equipFeature('target', '${key}')" style="background:#27ae60;">장착하기</button>`;
                     html += `</div>`; div.innerHTML = html; container.appendChild(div);
                 });
             } else if (currentShopTab === 'item') {
                 let div = document.createElement('div'); div.className = `shop-item`;
-                let html = `<div class="item-name">전술 아이템 (바람정지+투사체x2)</div><div class="item-desc">이번 턴의 날씨를 고요함으로 바꾸고, 대포알이 2개 발사됩니다.<br>현재 소지: ${player.items.tactical} / 3</div><div class="btn-group">`;
-                if (player.items.tactical < 3) html += `<button onclick="buyItem(300)">구매하기 (300G)</button>`;
+                let html = `<div class="item-name">전술 아이템 (정지+투사체x2)</div><div class="item-desc">현재 소지: ${player.items.tactical} / 3</div><div class="btn-group">`;
+                if (player.items.tactical < 3) html += `<button onclick="buyItem(300)">구매 (300G)</button>`;
                 else html += `<button style="background:#555;" disabled>최대 소지 한도 초과</button>`;
                 html += `</div>`; div.innerHTML = html; container.appendChild(div);
             }
@@ -564,29 +582,21 @@
         function openShop() { document.getElementById('menuUI').style.display = 'none'; document.getElementById('shopPopup').style.display = 'flex'; renderShopUI(); }
         function closeShop() { document.getElementById('shopPopup').style.display = 'none'; document.getElementById('menuUI').style.display = 'flex'; }
 
-        // ★ 모바일 최적화: 대포 각도 유지 로직
-        let dragStartY = 0;
-        let initialAngle = -45; // 터치 시작 시점의 각도 저장 변수
-
+        // 스틱 조작 로직 (CSS 스케일링이 되어도 상대적 이동량만 체크하므로 로직 변경 불필요)
+        let dragStartY = 0; let initialAngle = -45;
         canvas.addEventListener('pointerdown', (e) => {
             if (GAME.state !== 'aiming') return;
-            player.isDragging = true;
-            dragStartY = e.clientY;
-            initialAngle = player.angle; // 드래그 시작 시 각도 기억
-            player.power = 10;
-            player.powerDir = 1;
+            player.isDragging = true; gameContainer.classList.add('dragging');
+            dragStartY = e.clientY; initialAngle = player.angle; player.power = 10; player.powerDir = 1;
         });
-
         canvas.addEventListener('pointermove', (e) => {
             if (!player.isDragging) return;
             let deltaY = dragStartY - e.clientY;
-            // deltaY 곱셈 계수를 0.5로 낮추어 모바일에서 섬세한 조작이 가능하도록 함
             player.angle = Math.max(-90, Math.min(0, initialAngle - (deltaY * 0.5)));
         });
-
         canvas.addEventListener('pointerup', () => {
             if (!player.isDragging) return;
-            player.isDragging = false;
+            player.isDragging = false; gameContainer.classList.remove('dragging');
             fireProjectile();
         });
 
@@ -596,8 +606,7 @@
             playSound('bgm');
             document.getElementById('menuUI').style.display = 'none'; document.getElementById('inGameUI').style.display = 'block';
             GAME.turn = 1; GAME.totalDamage = 0; GAME.cameraX = 0; GAME.itemActive = false;
-            initClouds();
-            initTarget(); generateBZone(); initTurnEnvironment();
+            initClouds(); initTarget(); generateBZone(); initTurnEnvironment();
         }
 
         function initTurnEnvironment() {
@@ -633,6 +642,7 @@
         }
 
         function returnToMenu() { document.getElementById('resultPopup').style.display = 'none'; document.getElementById('menuUI').style.display = 'flex'; GAME.state = 'menu'; GAME.cameraX = 0; }
+
         function updateUI() {
             document.getElementById('uiNickname').innerText = GAME.nickname; document.getElementById('uiTurn').innerText = `Turn: ${GAME.turn}/${GAME.maxTurns}`;
             document.getElementById('uiScore').innerText = `점수: ${GAME.totalDamage}`; document.getElementById('uiGold').innerText = `💰 ${GAME.gold}`;
@@ -650,7 +660,6 @@
             floatingTexts.forEach(ft => { ft.y -= 1; ft.life--; }); floatingTexts = floatingTexts.filter(ft => ft.life > 0);
             hitParticles.forEach(p => { p.vy += PHYSICS.gravity; p.x += p.vx; p.y += p.vy; p.life--; }); hitParticles = hitParticles.filter(p => p.life > 0);
 
-            // ☁️ 구름 이동
             clouds.forEach(c => {
                 let windEffect = (GAME.wind * 0.15) * c.baseSpeed;
                 c.x += windEffect;
@@ -681,25 +690,17 @@
                     if (p.x + p.radius > bZone.x && p.x - p.radius < bZone.x + bZone.width) {
                         let hitObstacle = false;
                         for (let j = 0; j < bZone.obstacleBlocks.length; j++) {
-                            let ob = bZone.obstacleBlocks[j];
-                            let obX = bZone.x + ob.relX;
-                            let closestX = Math.max(obX, Math.min(p.x, obX + ob.w));
-                            let closestY = Math.max(ob.y, Math.min(p.y, ob.y + ob.h));
+                            let ob = bZone.obstacleBlocks[j]; let obX = bZone.x + ob.relX;
+                            let closestX = Math.max(obX, Math.min(p.x, obX + ob.w)); let closestY = Math.max(ob.y, Math.min(p.y, ob.y + ob.h));
                             let distX = p.x - closestX; let distY = p.y - closestY;
-                            let distanceSquared = (distX * distX) + (distY * distY);
-
-                            if (distanceSquared <= (p.radius * p.radius)) {
+                            if ((distX * distX) + (distY * distY) <= (p.radius * p.radius)) {
                                 hitObstacle = true; ob.hp -= 1; p.active = false;
                                 playSound('hit_metal'); triggerShake(6, 10);
-
                                 if (ob.hp <= 0) {
-                                    addFloatingText(obX, p.y, "파괴됨!", "#e74c3c");
-                                    createHitParticles(p.x, p.y, "#7f8c8d");
-                                    playSound('break_metal');
-                                    bZone.obstacleBlocks.splice(j, 1);
+                                    addFloatingText(obX, p.y, "파괴됨!", "#e74c3c"); createHitParticles(p.x, p.y, "#7f8c8d");
+                                    playSound('break_metal'); bZone.obstacleBlocks.splice(j, 1);
                                 } else {
-                                    addFloatingText(obX, p.y, "흠집!", "#f39c12");
-                                    createHitParticles(p.x, p.y, "#95a5a6");
+                                    addFloatingText(obX, p.y, "흠집!", "#f39c12"); createHitParticles(p.x, p.y, "#95a5a6");
                                 }
                                 break;
                             }
@@ -780,42 +781,28 @@
 
             let bgImg = ASSETS.images.bg;
             if (bgImg && bgImg.complete && bgImg.naturalWidth > 0) {
-                ctx.save();
-                let parallaxX = GAME.cameraX * 0.2;
-                ctx.translate(GAME.cameraX - parallaxX, 0);
-                ctx.drawImage(bgImg, 0, 0, GAME.worldWidth + 200, canvas.height);
-                ctx.restore();
+                ctx.save(); let parallaxX = GAME.cameraX * 0.2; ctx.translate(GAME.cameraX - parallaxX, 0);
+                ctx.drawImage(bgImg, 0, 0, GAME.worldWidth + 200, canvas.height); ctx.restore();
             } else {
-                ctx.fillStyle = "#e0e7ee";
-                ctx.fillRect(GAME.cameraX, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "#e0e7ee"; ctx.fillRect(GAME.cameraX, 0, canvas.width, canvas.height);
             }
 
             let cloudImg = ASSETS.images.cloud;
-            ctx.save();
-            let cloudParallaxX = GAME.cameraX * 0.5;
-            ctx.translate(GAME.cameraX - cloudParallaxX, 0);
-
+            ctx.save(); let cloudParallaxX = GAME.cameraX * 0.5; ctx.translate(GAME.cameraX - cloudParallaxX, 0);
             clouds.forEach(c => {
                 if (cloudImg && cloudImg.complete && cloudImg.naturalWidth > 0) {
                     ctx.drawImage(cloudImg, c.x, c.y, c.w, c.h);
                 } else {
-                    ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-                    ctx.beginPath();
-                    ctx.arc(c.x, c.y, c.h / 2, Math.PI / 2, Math.PI * 1.5);
-                    ctx.arc(c.x + c.w * 0.3, c.y - c.h * 0.2, c.h / 1.5, 0, Math.PI * 2);
-                    ctx.arc(c.x + c.w * 0.7, c.y - c.h * 0.1, c.h / 1.8, 0, Math.PI * 2);
-                    ctx.arc(c.x + c.w, c.y, c.h / 2, Math.PI * 1.5, Math.PI / 2);
-                    ctx.closePath();
-                    ctx.fill();
+                    ctx.fillStyle = "rgba(255, 255, 255, 0.4)"; ctx.beginPath();
+                    ctx.arc(c.x, c.y, c.h / 2, Math.PI / 2, Math.PI * 1.5); ctx.arc(c.x + c.w * 0.3, c.y - c.h * 0.2, c.h / 1.5, 0, Math.PI * 2);
+                    ctx.arc(c.x + c.w * 0.7, c.y - c.h * 0.1, c.h / 1.8, 0, Math.PI * 2); ctx.arc(c.x + c.w, c.y, c.h / 2, Math.PI * 1.5, Math.PI / 2);
+                    ctx.closePath(); ctx.fill();
                 }
             });
             ctx.restore();
 
-            // 바람 연출 컬러 수정
             if (GAME.wind !== 0 && GAME.state !== 'menu') {
-                ctx.strokeStyle = "rgba(100, 100, 100, 0.5)";
-                ctx.lineWidth = 1.5;
-                ctx.beginPath();
+                ctx.strokeStyle = "rgba(100,100,100,0.5)"; ctx.lineWidth = 1.5; ctx.beginPath();
                 windParticles.forEach(wp => {
                     let dir = GAME.wind > 0 ? 1 : -1; wp.x += (wp.speed * dir);
                     if (dir > 0 && wp.x > GAME.worldWidth) wp.x = 0; if (dir < 0 && wp.x < 0) wp.x = GAME.worldWidth;
@@ -840,43 +827,29 @@
 
             let pnlB = ASSETS.images.panel_b;
             bZone.segments.forEach(s => {
-                if (pnlB && pnlB.complete && pnlB.naturalWidth > 0) {
-                    ctx.drawImage(pnlB, bZone.x, s.y, bZone.width, s.height);
-                } else {
-                    ctx.fillStyle = s.color; ctx.fillRect(bZone.x, s.y, bZone.width, s.height);
-                    ctx.strokeStyle = "rgba(255,255,255,0.3)"; ctx.strokeRect(bZone.x, s.y, bZone.width, s.height);
-                }
+                if (pnlB && pnlB.complete && pnlB.naturalWidth > 0) { ctx.drawImage(pnlB, bZone.x, s.y, bZone.width, s.height); }
+                else { ctx.fillStyle = s.color; ctx.fillRect(bZone.x, s.y, bZone.width, s.height); ctx.strokeStyle = "rgba(255,255,255,0.3)"; ctx.strokeRect(bZone.x, s.y, bZone.width, s.height); }
                 ctx.fillStyle = "#fff"; ctx.font = "11px Arial"; ctx.fillText(s.text, bZone.x + 2, s.y + s.height / 2);
             });
 
-            let bTile = ASSETS.images.b_tile;
-            let bTileDmg = ASSETS.images.b_tile_dmg;
+            let bTile = ASSETS.images.b_tile; let bTileDmg = ASSETS.images.b_tile_dmg;
             bZone.obstacleBlocks.forEach(ob => {
-                let obX = bZone.x + ob.relX;
-                let drawFallback = true;
-
-                if (ob.hp === 1 && bTileDmg && bTileDmg.complete && bTileDmg.naturalWidth > 0) {
-                    ctx.drawImage(bTileDmg, obX, ob.y, ob.w, ob.h); drawFallback = false;
-                } else if (bTile && bTile.complete && bTile.naturalWidth > 0) {
+                let obX = bZone.x + ob.relX; let drawFallback = true;
+                if (ob.hp === 1 && bTileDmg && bTileDmg.complete && bTileDmg.naturalWidth > 0) { ctx.drawImage(bTileDmg, obX, ob.y, ob.w, ob.h); drawFallback = false; }
+                else if (bTile && bTile.complete && bTile.naturalWidth > 0) {
                     ctx.drawImage(bTile, obX, ob.y, ob.w, ob.h); drawFallback = false;
                     if (ob.hp === 1) { ctx.strokeStyle = "#111"; ctx.beginPath(); ctx.moveTo(obX + 2, ob.y + 2); ctx.lineTo(obX + ob.w / 2, ob.y + ob.h / 2); ctx.lineTo(obX + ob.w - 2, ob.y + ob.h / 2 + 5); ctx.stroke(); }
                 }
-
                 if (drawFallback) {
-                    ctx.fillStyle = "#556b2f"; ctx.fillRect(obX, ob.y, ob.w, ob.h);
-                    ctx.strokeStyle = "#2c3e50"; ctx.lineWidth = 2; ctx.strokeRect(obX, ob.y, ob.w, ob.h); ctx.lineWidth = 1;
+                    ctx.fillStyle = "#556b2f"; ctx.fillRect(obX, ob.y, ob.w, ob.h); ctx.strokeStyle = "#2c3e50"; ctx.lineWidth = 2; ctx.strokeRect(obX, ob.y, ob.w, ob.h); ctx.lineWidth = 1;
                     if (ob.hp === 1) { ctx.strokeStyle = "#111"; ctx.beginPath(); ctx.moveTo(obX + 2, ob.y + 2); ctx.lineTo(obX + ob.w / 2, ob.y + ob.h / 2); ctx.lineTo(obX + ob.w - 2, ob.y + ob.h / 2 + 5); ctx.stroke(); }
                 }
             });
 
             let pnlC = ASSETS.images.panel_c;
             cZone.segments.forEach(s => {
-                if (pnlC && pnlC.complete && pnlC.naturalWidth > 0) {
-                    ctx.drawImage(pnlC, cZone.x, cZone.y + s.yOff, cZone.width, s.h);
-                } else {
-                    ctx.fillStyle = s.color; ctx.fillRect(cZone.x, cZone.y + s.yOff, cZone.width, s.h);
-                    ctx.strokeStyle = "rgba(255,255,255,0.3)"; ctx.strokeRect(cZone.x, cZone.y + s.yOff, cZone.width, s.h);
-                }
+                if (pnlC && pnlC.complete && pnlC.naturalWidth > 0) { ctx.drawImage(pnlC, cZone.x, cZone.y + s.yOff, cZone.width, s.h); }
+                else { ctx.fillStyle = s.color; ctx.fillRect(cZone.x, cZone.y + s.yOff, cZone.width, s.h); ctx.strokeStyle = "rgba(255,255,255,0.3)"; ctx.strokeRect(cZone.x, cZone.y + s.yOff, cZone.width, s.h); }
                 ctx.fillStyle = "#fff"; ctx.font = "12px Arial"; ctx.fillText(s.text, cZone.x + 2, cZone.y + s.yOff + s.h / 2 + 5);
             });
 
@@ -890,59 +863,39 @@
                 });
             }
 
-            let tRock = ASSETS.images.target;
-            let tRockDmg = ASSETS.images.target_dmg;
+            let tRock = ASSETS.images.target; let tRockDmg = ASSETS.images.target_dmg;
             targetBlocks.forEach(b => {
                 let drawFallback = true;
-                if (b.hp === 1 && tRockDmg && tRockDmg.complete && tRockDmg.naturalWidth > 0) {
-                    ctx.drawImage(tRockDmg, b.x, b.y, b.w, b.h); drawFallback = false;
-                } else if (tRock && tRock.complete && tRock.naturalWidth > 0) {
+                if (b.hp === 1 && tRockDmg && tRockDmg.complete && tRockDmg.naturalWidth > 0) { ctx.drawImage(tRockDmg, b.x, b.y, b.w, b.h); drawFallback = false; }
+                else if (tRock && tRock.complete && tRock.naturalWidth > 0) {
                     ctx.drawImage(tRock, b.x, b.y, b.w, b.h); drawFallback = false;
                     if (b.hp === 1) { ctx.strokeStyle = "#1a1a1a"; ctx.beginPath(); ctx.moveTo(b.x + 2, b.y + 2); ctx.lineTo(b.x + b.w / 2, b.y + b.h / 2); ctx.lineTo(b.x + b.w - 2, b.y + b.h / 2 + 5); ctx.stroke(); }
                 }
-
                 if (drawFallback) {
-                    ctx.fillStyle = "#4a5a6a"; ctx.fillRect(b.x, b.y, b.w, b.h);
-                    ctx.strokeStyle = "#3a4a5a"; ctx.strokeRect(b.x, b.y, b.w, b.h);
+                    ctx.fillStyle = "#4a5a6a"; ctx.fillRect(b.x, b.y, b.w, b.h); ctx.strokeStyle = "#3a4a5a"; ctx.strokeRect(b.x, b.y, b.w, b.h);
                     if (b.hp === 1) { ctx.strokeStyle = "#1a1a1a"; ctx.beginPath(); ctx.moveTo(b.x + 2, b.y + 2); ctx.lineTo(b.x + b.w / 2, b.y + b.h / 2); ctx.lineTo(b.x + b.w - 2, b.y + b.h / 2 + 5); ctx.stroke(); }
                 }
             });
 
-            let tData = TARGET_TYPES[player.targetEquipped];
-            let coreImg = ASSETS.images[tData.imgKey];
-            let r = tData.weakRadius;
-
-            if (coreImg && coreImg.complete && coreImg.naturalWidth > 0) {
-                ctx.drawImage(coreImg, weakPoint.x - r, weakPoint.y - r, r * 2, r * 2);
-            } else {
-                ctx.fillStyle = "#8a2be2"; ctx.beginPath(); ctx.arc(weakPoint.x, weakPoint.y, r, 0, Math.PI * 2); ctx.fill();
-                ctx.strokeStyle = "#ff00ff"; ctx.lineWidth = 2; ctx.stroke();
-            }
+            let tData = TARGET_TYPES[player.targetEquipped]; let coreImg = ASSETS.images[tData.imgKey]; let r = tData.weakRadius;
+            if (coreImg && coreImg.complete && coreImg.naturalWidth > 0) { ctx.drawImage(coreImg, weakPoint.x - r, weakPoint.y - r, r * 2, r * 2); }
+            else { ctx.fillStyle = "#8a2be2"; ctx.beginPath(); ctx.arc(weakPoint.x, weakPoint.y, r, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = "#ff00ff"; ctx.lineWidth = 2; ctx.stroke(); }
             ctx.fillStyle = "#fff"; ctx.font = "bold 12px Arial"; ctx.shadowColor = "#000"; ctx.shadowBlur = 3;
             ctx.fillText(tData.name, weakPoint.x - 18, weakPoint.y + r + 15); ctx.shadowBlur = 0;
 
-            let cData = CANNONS[player.equipped];
-            let pLevel = player.cannons[player.equipped].level;
-            let baseImg = ASSETS.images.cannon_base;
-            let barrelImg = ASSETS.images.cannon_barrel;
+            let cData = CANNONS[player.equipped]; let pLevel = player.cannons[player.equipped].level;
+            let baseImg = ASSETS.images.cannon_base; let barrelImg = ASSETS.images.cannon_barrel;
 
             ctx.save(); ctx.translate(player.x, player.y); ctx.rotate(player.angle * Math.PI / 180);
-            if (barrelImg && barrelImg.complete && barrelImg.naturalWidth > 0) {
-                ctx.drawImage(barrelImg, 0, -10, 40, 20);
-            } else {
-                ctx.fillStyle = "#1a252f"; ctx.fillRect(0, -8, 35, 16);
-            }
+            if (barrelImg && barrelImg.complete && barrelImg.naturalWidth > 0) { ctx.drawImage(barrelImg, 0, -10, 40, 20); }
+            else { ctx.fillStyle = "#1a252f"; ctx.fillRect(0, -8, 35, 16); }
             ctx.restore();
 
-            if (baseImg && baseImg.complete && baseImg.naturalWidth > 0) {
-                ctx.drawImage(baseImg, player.x - 20, player.y - 20, 40, 40);
-            } else {
-                ctx.fillStyle = cData.color; ctx.beginPath(); ctx.arc(player.x, player.y, 18, 0, Math.PI * 2); ctx.fill();
-            }
+            if (baseImg && baseImg.complete && baseImg.naturalWidth > 0) { ctx.drawImage(baseImg, player.x - 20, player.y - 20, 40, 40); }
+            else { ctx.fillStyle = cData.color; ctx.beginPath(); ctx.arc(player.x, player.y, 18, 0, Math.PI * 2); ctx.fill(); }
 
             ctx.fillStyle = "#333"; ctx.font = "bold 13px Arial"; ctx.textAlign = "center";
-            ctx.fillText(`Lv.${pLevel}`, player.x, player.y + 35);
-            ctx.textAlign = "left";
+            ctx.fillText(`Lv.${pLevel}`, player.x, player.y + 35); ctx.textAlign = "left";
 
             if (player.isDragging) {
                 ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(player.x - 60, player.y - 55, 120, 8);
