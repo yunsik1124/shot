@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Project Color-Shot v11.0 (Full Version: Mechanics & Zero-Lag)</title>
+    <title>Project Color-Shot v11.1 (C-Zone Expanded)</title>
     <style>
         * {
             box-sizing: border-box;
@@ -258,12 +258,12 @@
 
     <script>
         /* ==========================================================
-           Color-Shot v11.0  |  Full Version (Mechanics & Zero-Lag)
+           Color-Shot v11.1  |  C-Zone Expanded (1.5x)
 
            ★ 업데이트 내역:
-           1. 기믹 수정: B존 [Turn +1], [갯수 x3, x6] 적용
-           2. 인풋렉 제거: returning 상태에서 조기 입력 시 즉시 aiming 전환
-           3. 풀버전 복구: 상점, UI, 장비 데이터 등 전체 시스템 100% 통합
+           1. C존 세로 길이 1.5배 증가 (height: 120 -> 180)
+           2. C존 내부 버프 영역 분배 확대 (h: 60 -> 90)
+           3. C존 가이드 배경 및 이동 범위(maxY) 동적 호환 처리 완비
            ========================================================== */
 
         const canvas = document.getElementById('gameCanvas');
@@ -287,12 +287,10 @@
         const GRAV = 0.05;
         const WIND_M = 0.0025;
 
-        // ★ 시간 보정 및 배속 설정 (정상 속도로 롤백)
         const TARGET_FPS = 144;
         const MS_PER_UPDATE = 1000 / TARGET_FPS; 
         const GLOBAL_TIME_SCALE = 1.0; 
 
-        // 60프레임 강제 고정
         const MAX_RENDER_FPS = 60;
         const RENDER_INTERVAL = 1000 / MAX_RENDER_FPS;
 
@@ -323,7 +321,7 @@
             state: 'menu', turn: 1, maxTurns: 10, totalDamage: 0, gold: 0,
             nickname: '', wind: 0, cameraX: 0, turnWaiting: false, itemActive: false,
             _lastDmg: -1, _lastGold: -1, _turnId: 0,
-            turnBonusAwarded: false // ★ Turn +1 중복 적용 방지
+            turnBonusAwarded: false 
         };
 
         const CAMERA = { shakeFrames: 0, shakeIntensity: 0 };
@@ -412,7 +410,18 @@
         }
 
         let bZone = { x: 280, width: 45, dir: 1, speed: 0.4, minX: 200, maxX: 380, segments: [], obstacleBlocks: [] };
-        let cZone = { x: 500, y: 300, width: 25, height: 120, dir: 1, speed: 0.8, minY: 100, maxY: 480, segments: [ { type: 'goldMult', text: '💰 x2', color: 'rgba(50,255,50,0.5)', yOff: 0, h: 60 }, { type: 'qty4', text: 'x4', color: 'rgba(255,215,0,0.6)', yOff: 60, h: 60 } ] };
+        
+        // ★ C존 세로길이 1.5배 상향 완료 (height 120 -> 180, 구역별 높이 60 -> 90)
+        let cZone = { 
+            x: 500, y: 300, width: 25, 
+            height: 180, 
+            dir: 1, speed: 0.8, minY: 100, maxY: 540, 
+            segments: [ 
+                { type: 'goldMult', text: '💰 x2', color: 'rgba(50,255,50,0.5)', yOff: 0, h: 90 }, 
+                { type: 'qty4', text: 'x4', color: 'rgba(255,215,0,0.6)', yOff: 90, h: 90 } 
+            ] 
+        };
+        
         let targetBlocks = []; const weakPoint = { x: 630, y: 510 };
 
         function initTarget() {
@@ -427,7 +436,6 @@
 
         function generateBZone() {
             bZone.segments = []; bZone.obstacleBlocks = [];
-            // ★ 기믹 수정 적용: 갯수 x3, x6 및 TURN +1
             const midTypes = [ 
                 { id: 'qty6', text: '개수 x6', color: 'rgba(255,215,0,0.7)' }, 
                 { id: 'qty3', text: '개수 x3', color: 'rgba(0,191,255,0.6)' }, 
@@ -595,10 +603,10 @@
                 GAME.cameraX -= 12; 
                 if (GAME.cameraX <= 0) { 
                     GAME.cameraX = 0; 
-                    if (!GAME.turnWaiting) { // 이미 터치로 진입했다면 무시
+                    if (!GAME.turnWaiting) { 
                         GAME.state = 'aiming';
                         if (!GAME.turnBonusAwarded) GAME.turn++;
-                        GAME.turnBonusAwarded = false; // 턴 넘김 후 보너스 리셋
+                        GAME.turnBonusAwarded = false; 
                         if (GAME.turn > GAME.maxTurns) endGame(); else initTurnEnvironment(); 
                     }
                 }
@@ -636,7 +644,6 @@
                                 if (p.y >= s.y && p.y <= s.y + s.height) {
                                     p.passedBZone = true; playSound('buff');
                                     
-                                    // ★ 기믹 수정 로직 적용
                                     if (s.id === 'turnPlus') {
                                         if (!GAME.turnBonusAwarded) {
                                             GAME.turnBonusAwarded = true;
@@ -644,7 +651,6 @@
                                         }
                                     } else if (s.id.startsWith('qty')) {
                                         const mul = s.id === 'qty6' ? 6 : 3;
-                                        // 과도한 렉 방지 리미터 (40개 이상일 경우 증폭 제한)
                                         const lim = projectiles.length > 40 ? 1 : mul; 
                                         addFloatingText(bZone.x, p.y - 20, `개수 x${mul}`, s.color);
                                         for (let j = 1; j < lim; j++) {
@@ -711,7 +717,7 @@
                     setTimeout(() => { 
                         if (GAME._turnId === capturedId && GAME.state === 'flying') {
                             GAME.state = 'returning'; 
-                            GAME.turnWaiting = false; // 복귀 준비 완료
+                            GAME.turnWaiting = false; 
                         } 
                     }, 800);
                 }
@@ -764,7 +770,8 @@
                 ctx.fillStyle = '#fff'; ctx.fillText(s.text, cZone.x + 2, cZone.y + s.yOff + s.h / 2 + 5);
             }
             if (GAME.state === 'aiming') {
-                const vX = GAME.cameraX + 350; ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(vX, cZone.minY, 7, 380);
+                // ★ C존 세로 배경 안내선 길이를 동적으로 호환 (maxY - minY)
+                const vX = GAME.cameraX + 350; ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(vX, cZone.minY, 7, cZone.maxY - cZone.minY);
                 for (let i = 0; i < cZone.segments.length; i++) { const s = cZone.segments[i]; ctx.fillStyle = s.color; ctx.fillRect(vX, cZone.y + s.yOff, 7, s.h); }
             }
 
@@ -859,16 +866,15 @@
         function openShop() { UI.menuUI.style.display = 'none'; UI.shopPopup.style.display = 'flex'; renderShopUI(); }
         function closeShop() { UI.shopPopup.style.display = 'none'; UI.menuUI.style.display = 'flex'; }
 
-        // ── 유저 입력 (★ 인풋렉 제거 핵심 로직 반영 완료) ─────────────────────────
         let dragStartY = 0, initialAngle = -45;
 
         canvas.addEventListener('pointerdown', e => {
-            // 화면 복귀(returning) 중에 터치하면 강제로 턴 넘기고 즉시 조작 모드 진입
+            // ★ 조기 입력 허용 로직: 복귀 중 터치하면 즉시 턴 계산 후 조작 돌입
             if (GAME.state === 'returning') {
                 GAME.cameraX = 0;
                 GAME.state = 'aiming';
                 if (!GAME.turnBonusAwarded) GAME.turn++;
-                GAME.turnBonusAwarded = false; // 보너스 리셋
+                GAME.turnBonusAwarded = false; 
                 
                 if (GAME.turn > GAME.maxTurns) {
                     endGame();
