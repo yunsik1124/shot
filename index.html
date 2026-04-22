@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Project Color-Shot Prototype v7.0 (Cloud Physics & Polish)</title>
+    <title>Project Color-Shot Prototype v7.1 (Final Polish)</title>
     <style>
         body {
             margin: 0;
@@ -332,7 +332,7 @@
 
         // 이미지 에셋
         loadImage('bg', 'bg_stage_01.png');
-        loadImage('cloud', 'cloud.png'); // 신규: 구름 에셋 추가
+        loadImage('cloud', 'cloud.png');
         loadImage('ground_start', 'ground_start.png');
         loadImage('ground_end', 'ground_end.png');
         loadImage('cannon_base', 'cannon_base.png');
@@ -364,11 +364,17 @@
         itemBtnImg.src = 'img/icon_item_time.png';
         itemBtnImg.onload = () => { document.getElementById('itemBtn').style.backgroundImage = `url('${itemBtnImg.src}')`; };
 
+        // ★ 볼륨 밸런스 패치 적용
         function playSound(key) {
             let audio = ASSETS.sounds[key];
             if (audio && audio.readyState >= 2) {
                 let clone = audio.cloneNode();
-                if (key === 'bgm') { clone.loop = true; clone.volume = 0.5; }
+                if (key === 'bgm') {
+                    clone.loop = true;
+                    clone.volume = 0.3; // 배경음 잔잔하게
+                } else {
+                    clone.volume = 0.6; // 효과음 적당하게
+                }
                 clone.play().catch(e => { /* 무시 */ });
             }
         }
@@ -379,7 +385,7 @@
         const GAME = { state: 'menu', turn: 1, maxTurns: 10, totalDamage: 0, gold: 0, nickname: "", wind: 0, cameraX: 0, worldWidth: 850, turnWaiting: false, itemActive: false };
         const PHYSICS = { gravity: 0.05, windMulti: 0.0025 };
         let floatingTexts = []; let projectiles = []; let windParticles = []; let hitParticles = [];
-        let clouds = []; // 구름 객체 배열
+        let clouds = [];
 
         const CANNONS = {
             normal: { id: 'normal', name: "노멀 대포", baseDmg: 100, radius: 12, color: "#2c3e50", unlockCost: 0 },
@@ -422,7 +428,7 @@
             const currentRadius = TARGET_TYPES[player.targetEquipped].weakRadius;
             const startX = weakPoint.x + currentRadius - 5;
 
-            // 🎯 여백 제거 로직 적용: 곱하는 간격을 22 -> 20으로 변경하여 빈틈 완전히 접합
+            // 🎯 여백 제거 로직
             for (let c = 0; c < 5; c++) {
                 for (let r = 0; r < 10; r++) {
                     targetBlocks.push({ x: startX + c * 20, y: weakPoint.y - 120 + r * 20, w: 20, h: 20, hp: getRandomHP() });
@@ -439,7 +445,7 @@
             }
         }
 
-        // ☁️ 구름 초기화 로직 (게임 시작 시 1회 호출)
+        // ☁️ 구름 초기화
         function initClouds() {
             clouds = [];
             for (let i = 0; i < 6; i++) {
@@ -448,7 +454,7 @@
                     y: Math.random() * 200 + 20,
                     w: 80 + Math.random() * 60,
                     h: 40 + Math.random() * 30,
-                    baseSpeed: (Math.random() * 0.3 + 0.1) // 구름마다 고유한 기본 속도 편차
+                    baseSpeed: (Math.random() * 0.3 + 0.1)
                 });
             }
         }
@@ -558,10 +564,31 @@
         function openShop() { document.getElementById('menuUI').style.display = 'none'; document.getElementById('shopPopup').style.display = 'flex'; renderShopUI(); }
         function closeShop() { document.getElementById('shopPopup').style.display = 'none'; document.getElementById('menuUI').style.display = 'flex'; }
 
+        // ★ 모바일 최적화: 대포 각도 유지 로직
         let dragStartY = 0;
-        canvas.addEventListener('pointerdown', (e) => { if (GAME.state !== 'aiming') return; player.isDragging = true; dragStartY = e.clientY; player.power = 10; player.powerDir = 1; });
-        canvas.addEventListener('pointermove', (e) => { if (!player.isDragging) return; let deltaY = dragStartY - e.clientY; player.angle = Math.max(-90, Math.min(0, -45 - (deltaY * 1.0))); });
-        canvas.addEventListener('pointerup', () => { if (!player.isDragging) return; player.isDragging = false; fireProjectile(); });
+        let initialAngle = -45; // 터치 시작 시점의 각도 저장 변수
+
+        canvas.addEventListener('pointerdown', (e) => {
+            if (GAME.state !== 'aiming') return;
+            player.isDragging = true;
+            dragStartY = e.clientY;
+            initialAngle = player.angle; // 드래그 시작 시 각도 기억
+            player.power = 10;
+            player.powerDir = 1;
+        });
+
+        canvas.addEventListener('pointermove', (e) => {
+            if (!player.isDragging) return;
+            let deltaY = dragStartY - e.clientY;
+            // deltaY 곱셈 계수를 0.5로 낮추어 모바일에서 섬세한 조작이 가능하도록 함
+            player.angle = Math.max(-90, Math.min(0, initialAngle - (deltaY * 0.5)));
+        });
+
+        canvas.addEventListener('pointerup', () => {
+            if (!player.isDragging) return;
+            player.isDragging = false;
+            fireProjectile();
+        });
 
         function init() { loadLocalData(); document.getElementById('menuNickname').innerText = `접속 계정: ${GAME.nickname}`; requestAnimationFrame(gameLoop); }
 
@@ -569,7 +596,7 @@
             playSound('bgm');
             document.getElementById('menuUI').style.display = 'none'; document.getElementById('inGameUI').style.display = 'block';
             GAME.turn = 1; GAME.totalDamage = 0; GAME.cameraX = 0; GAME.itemActive = false;
-            initClouds(); // 게임 시작 시 구름 한 번만 생성
+            initClouds();
             initTarget(); generateBZone(); initTurnEnvironment();
         }
 
@@ -623,11 +650,10 @@
             floatingTexts.forEach(ft => { ft.y -= 1; ft.life--; }); floatingTexts = floatingTexts.filter(ft => ft.life > 0);
             hitParticles.forEach(p => { p.vy += PHYSICS.gravity; p.x += p.vx; p.y += p.vy; p.life--; }); hitParticles = hitParticles.filter(p => p.life > 0);
 
-            // ☁️ 구름 이동 로직: 현재 바람의 세기와 방향에 자연스럽게 동기화
+            // ☁️ 구름 이동
             clouds.forEach(c => {
                 let windEffect = (GAME.wind * 0.15) * c.baseSpeed;
                 c.x += windEffect;
-                // 월드 밖으로 나가면 반대편에서 자연스럽게 등장
                 if (c.x > GAME.worldWidth + 150) c.x = -150;
                 else if (c.x < -150) c.x = GAME.worldWidth + 150;
             });
@@ -764,17 +790,15 @@
                 ctx.fillRect(GAME.cameraX, 0, canvas.width, canvas.height);
             }
 
-            // ☁️ 1.5. 구름 연출 (패럴랙스 적용 & 에셋 핫스왑)
             let cloudImg = ASSETS.images.cloud;
             ctx.save();
-            let cloudParallaxX = GAME.cameraX * 0.5; // 구름은 배경보다 조금 더 빠르게 스크롤되어 원근감을 높임
+            let cloudParallaxX = GAME.cameraX * 0.5;
             ctx.translate(GAME.cameraX - cloudParallaxX, 0);
 
             clouds.forEach(c => {
                 if (cloudImg && cloudImg.complete && cloudImg.naturalWidth > 0) {
                     ctx.drawImage(cloudImg, c.x, c.y, c.w, c.h);
                 } else {
-                    // 에셋이 없을 때 그려지는 몽환적인 도형 구름
                     ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
                     ctx.beginPath();
                     ctx.arc(c.x, c.y, c.h / 2, Math.PI / 2, Math.PI * 1.5);
@@ -787,8 +811,11 @@
             });
             ctx.restore();
 
+            // 바람 연출 컬러 수정
             if (GAME.wind !== 0 && GAME.state !== 'menu') {
-                ctx.strokeStyle = "rgba(100,100,100,0.5)"; ctx.lineWidth = 1.5; ctx.beginPath();
+                ctx.strokeStyle = "rgba(100, 100, 100, 0.5)";
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
                 windParticles.forEach(wp => {
                     let dir = GAME.wind > 0 ? 1 : -1; wp.x += (wp.speed * dir);
                     if (dir > 0 && wp.x > GAME.worldWidth) wp.x = 0; if (dir < 0 && wp.x < 0) wp.x = GAME.worldWidth;
@@ -895,7 +922,7 @@
             ctx.fillText(tData.name, weakPoint.x - 18, weakPoint.y + r + 15); ctx.shadowBlur = 0;
 
             let cData = CANNONS[player.equipped];
-            let pLevel = player.cannons[player.equipped].level; // 현재 장착된 대포 레벨
+            let pLevel = player.cannons[player.equipped].level;
             let baseImg = ASSETS.images.cannon_base;
             let barrelImg = ASSETS.images.cannon_barrel;
 
@@ -913,10 +940,9 @@
                 ctx.fillStyle = cData.color; ctx.beginPath(); ctx.arc(player.x, player.y, 18, 0, Math.PI * 2); ctx.fill();
             }
 
-            // 🎯 대포 이름 대신 레벨 출력으로 변경 & 텍스트 정렬
             ctx.fillStyle = "#333"; ctx.font = "bold 13px Arial"; ctx.textAlign = "center";
             ctx.fillText(`Lv.${pLevel}`, player.x, player.y + 35);
-            ctx.textAlign = "left"; // 중요: 텍스트 정렬을 다시 왼쪽으로 복구
+            ctx.textAlign = "left";
 
             if (player.isDragging) {
                 ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(player.x - 60, player.y - 55, 120, 8);
