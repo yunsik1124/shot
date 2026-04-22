@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Project Color-Shot v8.8.2 (Zero Overdraw & Memory Optimized)</title>
+    <title>Project Color-Shot v8.8.3 (Extreme Optimized)</title>
     <style>
         /* 🎮 모바일 꽉 찬 화면 및 주소창 잘림 방지 */
         body {
@@ -51,14 +51,15 @@
             pointer-events: none;
         }
 
+        /* ★ [최적화] 그라데이션 백그라운드 제거 */
         .top-bar {
             display: flex;
             justify-content: space-between;
             padding: 15px 10px;
             color: #333;
             font-weight: bold;
-            background: linear-gradient(to bottom, rgba(255,255,255,0.9), rgba(255,255,255,0));
             font-size: 13px;
+            /* background: linear-gradient(...) 제거됨 */
         }
 
         .wind-indicator {
@@ -107,7 +108,6 @@
                 border-color: #fff;
             }
 
-        /* 단색 가상 스틱 */
         .virtual-stick-guide {
             position: absolute;
             bottom: 105px;
@@ -295,7 +295,7 @@
 </head>
 <body>
     <div id="game-container">
-        <canvas id="gameCanvas" width="360" height="640"></canvas>
+        <canvas id="gameCanvas"></canvas>
 
         <div class="ui-layer" id="inGameUI" style="display:none;">
             <div class="top-bar">
@@ -350,14 +350,23 @@
 
     <script>
         const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d', { alpha: false }); // 알파 채널 블렌딩 강제 비활성화(최적화)
+        const ctx = canvas.getContext('2d', { alpha: false }); // 블렌딩 끄기
         const gameContainer = document.getElementById('game-container');
 
         const ASSETS = { images: {}, sounds: {} };
+        const PI_180 = Math.PI / 180; // ★ 사전 연산 캐싱
 
-        // ★ [최적화] 구름 이미지 로드 완전 제거
-        function loadImage(key, path) { let img = new Image(); img.src = `img/${path}`; ASSETS.images[key] = img; }
-        function loadSound(key, path) { let audio = new Audio(`sound/${path}`); ASSETS.sounds[key] = audio; }
+        // ★ [최적화] 이미지 속성 지속 참조를 막기 위한 ready 플래그 추가
+        function loadImage(key, path) {
+            let img = new Image();
+            img.onload = () => { img.ready = true; };
+            img.src = `img/${path}`;
+            ASSETS.images[key] = img;
+        }
+        function loadSound(key, path) {
+            let audio = new Audio(`sound/${path}`);
+            ASSETS.sounds[key] = audio;
+        }
 
         loadImage('bg', 'bg_stage_01.png');
         loadImage('ground_start', 'ground_start.png'); loadImage('ground_end', 'ground_end.png');
@@ -373,13 +382,18 @@
         loadSound('hit_metal', 'sfx_hit_metal.wav'); loadSound('break_metal', 'sfx_break_metal.wav');
         loadSound('buff', 'sfx_pass_buff.wav'); loadSound('gold', 'sfx_coin_get.wav'); loadSound('item', 'sfx_item_tactical.wav');
 
+        // ★ [최적화] cloneNode() 삭제하여 오디오 객체 무한 생성에 따른 메모리 폭파 해결
         function playSound(key) {
             let audio = ASSETS.sounds[key];
-            if (audio && audio.readyState >= 2) {
-                let clone = audio.cloneNode();
-                if (key === 'bgm') { clone.loop = true; clone.volume = 0.4; }
-                clone.play().catch(e => { });
+            if (!audio || audio.readyState < 2) return;
+
+            if (key === 'bgm') {
+                if (audio.paused) { audio.loop = true; audio.volume = 0.4; audio.play().catch(e => { }); }
+                return;
             }
+            // SFX 재생 시 기존 객체의 재생 시간을 초기화하여 재활용
+            audio.currentTime = 0;
+            audio.play().catch(e => { });
         }
 
         const CAMERA = { shakeFrames: 0, shakeIntensity: 0 };
@@ -388,7 +402,6 @@
         const GAME = { state: 'menu', turn: 1, maxTurns: 10, totalDamage: 0, gold: 0, nickname: "", wind: 0, cameraX: 0, worldWidth: 850, turnWaiting: false, itemActive: false };
         const PHYSICS = { gravity: 0.05, windMulti: 0.0025 };
 
-        // ★ [최적화] 구름 배열(clouds) 선언 제거
         let floatingTexts = []; let projectiles = []; let windParticles = []; let hitParticles = [];
 
         const CANNONS = {
@@ -414,10 +427,7 @@
             items: { tactical: 3 }
         };
 
-        const SLOTS = {
-            slot1: { x: 25, y: 525 }, // 1번 슬롯: 좌측 상단
-            slot2: { x: 75, y: 575 }  // 2번 슬롯: 우측 하단
-        };
+        const SLOTS = { slot1: { x: 25, y: 525 }, slot2: { x: 75, y: 575 } };
 
         let currentShopTab = 'cannon';
         let bZone = { x: 280, width: 40, dir: 1, speed: 0.4, minX: 200, maxX: 380, segments: [], obstacleBlocks: [] };
@@ -427,16 +437,14 @@
         function initTarget() {
             targetBlocks = [];
             const getRandomHP = () => Math.random() > 0.3 ? 1 : 2;
-            const currentRadius = TARGET_TYPES[player.targetEquipped].weakRadius;
-            const startX = weakPoint.x + currentRadius - 5;
+            const r = TARGET_TYPES[player.targetEquipped].weakRadius;
+            const startX = weakPoint.x + r - 5;
 
             for (let c = 0; c < 5; c++) { for (let r = 0; r < 10; r++) { targetBlocks.push({ x: startX + c * 20, y: weakPoint.y - 120 + r * 20, w: 20, h: 20, hp: getRandomHP() }); } }
             const topY = weakPoint.y - 120;
             for (let c = 0; c < 12; c++) { targetBlocks.push({ x: (startX - 180) + c * 20, y: topY, w: 20, h: 20, hp: getRandomHP() }); }
-            for (let c = 0; c < 3; c++) { targetBlocks.push({ x: weakPoint.x + (currentRadius / 2) + c * 20, y: weakPoint.y - 10, w: 20, h: 20, hp: getRandomHP() }); }
+            for (let c = 0; c < 3; c++) { targetBlocks.push({ x: weakPoint.x + (r / 2) + c * 20, y: weakPoint.y - 10, w: 20, h: 20, hp: getRandomHP() }); }
         }
-
-        // ★ [최적화] 구름 초기화 함수 삭제 완료
 
         function loadLocalData() {
             let savedName = localStorage.getItem("colorShot_nick");
@@ -573,12 +581,29 @@
         canvas.addEventListener('pointermove', (e) => { if (!player.isDragging) return; let deltaY = dragStartY - e.clientY; player.angle = Math.max(-90, Math.min(0, initialAngle - (deltaY * 0.5))); });
         canvas.addEventListener('pointerup', () => { if (!player.isDragging) return; player.isDragging = false; gameContainer.classList.remove('dragging'); fireProjectile(); });
 
-        function init() { loadLocalData(); document.getElementById('menuNickname').innerText = `접속 계정: ${GAME.nickname}`; requestAnimationFrame(gameLoop); }
+        // ★ [최적화] 기기 해상도(DPR)에 캔버스 픽셀을 1:1 매칭 (안티앨리어싱 부하 제거)
+        function setupCanvas() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            if (rect.width === 0) return; // 화면 로드 안되었을 때 방어
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(canvas.width / 360, canvas.height / 640);
+            ctx.imageSmoothingEnabled = false;
+        }
+
+        function init() {
+            setupCanvas();
+            window.addEventListener('resize', setupCanvas);
+            loadLocalData();
+            document.getElementById('menuNickname').innerText = `접속 계정: ${GAME.nickname}`;
+            requestAnimationFrame(gameLoop);
+        }
 
         function startGame() {
             playSound('bgm'); document.getElementById('menuUI').style.display = 'none'; document.getElementById('inGameUI').style.display = 'block';
             GAME.turn = 1; GAME.totalDamage = 0; GAME.cameraX = 0; GAME.itemActive = false;
-            initTarget(); generateBZone(); initTurnEnvironment(); // ★ [최적화] 구름 초기화 제거
+            initTarget(); generateBZone(); initTurnEnvironment();
         }
 
         function initTurnEnvironment() {
@@ -596,7 +621,7 @@
                 let cId = player.equipped[slotKey]; if (!cId) return;
                 let cData = CANNONS[cId]; let slotPos = SLOTS[slotKey]; let speedMult = player.power * 0.45;
                 for (let i = 0; i < shotCount; i++) {
-                    let offsetAngle = (i === 1) ? 5 : 0; let rad = (player.angle + offsetAngle) * Math.PI / 180;
+                    let offsetAngle = (i === 1) ? 5 : 0; let rad = (player.angle + offsetAngle) * PI_180;
                     let startX = slotPos.x + Math.cos(rad) * 40; let startY = slotPos.y + Math.sin(rad) * 40;
                     projectiles.push({ x: startX, y: startY, vx: Math.cos(rad) * speedMult, vy: Math.sin(rad) * speedMult, active: true, radius: cData.radius, bMult: 1, bType: 'none', gMult: 1, passedBZone: false, passedCZone: false, baseDmg: cData.baseDmg, pLevel: player.cannons[cId].level, color: cData.color });
                 }
@@ -631,10 +656,8 @@
             bZone.x += bZone.speed * bZone.dir; if (bZone.x < bZone.minX || bZone.x > bZone.maxX) bZone.dir *= -1;
             cZone.y += cZone.speed * cZone.dir; if (cZone.y < cZone.minY || cZone.y + cZone.height > cZone.maxY) cZone.dir *= -1;
 
-            // ★ [최적화] GC 스파이크 방지용 역순 루프 + splice 삭제로 메모리 재할당 방지
             for (let i = floatingTexts.length - 1; i >= 0; i--) {
-                let ft = floatingTexts[i];
-                ft.y -= 1; ft.life--;
+                let ft = floatingTexts[i]; ft.y -= 1; ft.life--;
                 if (ft.life <= 0) floatingTexts.splice(i, 1);
             }
 
@@ -643,8 +666,6 @@
                 p.vy += PHYSICS.gravity; p.x += p.vx; p.y += p.vy; p.life--;
                 if (p.life <= 0) hitParticles.splice(i, 1);
             }
-
-            // ★ [최적화] 구름 관련 물리 연산 완전 제거
 
             if (player.isDragging) { if (player.powerDir > 0) { player.power += 0.075; if (player.power >= 18) { player.power = 18; player.powerDir = 0; } } }
 
@@ -663,7 +684,8 @@
 
                     if (p.x + p.radius > bZone.x && p.x - p.radius < bZone.x + bZone.width) {
                         let hitObstacle = false;
-                        for (let j = 0; j < bZone.obstacleBlocks.length; j++) {
+                        // ★ [최적화] 충돌 박스 제거 시 배열 꼬임 방지를 위해 역순 루프 적용
+                        for (let j = bZone.obstacleBlocks.length - 1; j >= 0; j--) {
                             let ob = bZone.obstacleBlocks[j]; let obX = bZone.x + ob.relX;
                             let closestX = Math.max(obX, Math.min(p.x, obX + ob.w)); let closestY = Math.max(ob.y, Math.min(p.y, ob.y + ob.h));
                             let distX = p.x - closestX; let distY = p.y - closestY;
@@ -716,8 +738,8 @@
 
                     if (!hasHitAnyBlock && p.active) {
                         let dist = Math.hypot(p.x - weakPoint.x, p.y - weakPoint.y);
-                        let activeTargetRadius = TARGET_TYPES[player.targetEquipped].weakRadius;
-                        if (dist <= activeTargetRadius) {
+                        let r = TARGET_TYPES[player.targetEquipped].weakRadius;
+                        if (dist <= r) {
                             p.active = false;
                             let mult = p.bType === 'dmg' ? p.bMult : 1; let finalDamage = Math.floor((p.baseDmg + (p.pLevel * 10)) * mult * 2.5);
                             GAME.totalDamage += finalDamage; GAME.gold += Math.floor(finalDamage / 10) * (p.gMult || 1);
@@ -726,6 +748,10 @@
                         }
                     }
                 }
+
+                // ★ [최적화] 비활성화된 투사체들을 메모리에서 완전히 날려버림 (무한 루프 렉 제거)
+                projectiles = projectiles.filter(p => p.active);
+
                 if (activeCount > 0) GAME.cameraX = Math.max(0, Math.min(leaderX - 180, GAME.worldWidth - canvas.width));
                 if (activeCount === 0 && !GAME.turnWaiting) { GAME.turnWaiting = true; setTimeout(() => { GAME.state = 'returning'; }, 1000); }
             }
@@ -733,8 +759,7 @@
 
         function drawScene() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = "#e0e7ee";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#e0e7ee"; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             let sx = 0; let sy = 0;
             if (CAMERA.shakeFrames > 0) { sx = (Math.random() - 0.5) * CAMERA.shakeIntensity; sy = (Math.random() - 0.5) * CAMERA.shakeIntensity; }
@@ -742,13 +767,12 @@
             if (GAME.state === 'menu') GAME.cameraX = 0;
             ctx.save(); ctx.translate(-GAME.cameraX + sx, sy);
 
+            // ★ [최적화] 매 프레임 DOM 속성을 읽는 .complete, .naturalWidth 제거 -> ready 플래그 체크
             let bgImg = ASSETS.images.bg;
-            if (bgImg && bgImg.complete && bgImg.naturalWidth > 0) {
+            if (bgImg && bgImg.ready) {
                 ctx.save(); let parallaxX = GAME.cameraX * 0.2; ctx.translate(GAME.cameraX - parallaxX, 0);
-                ctx.drawImage(bgImg, 0, 0, GAME.worldWidth + 200, canvas.height); ctx.restore();
+                ctx.drawImage(bgImg, 0, 0, GAME.worldWidth + 200, 640); ctx.restore();
             }
-
-            // ★ [최적화] 구름 렌더링 파이프라인 완전 제거
 
             if (GAME.wind !== 0 && GAME.state !== 'menu') {
                 ctx.strokeStyle = "#b0bec5"; ctx.lineWidth = 1.5; ctx.beginPath();
@@ -761,16 +785,16 @@
             }
 
             let gStart = ASSETS.images.ground_start;
-            if (gStart && gStart.complete && gStart.naturalWidth > 0) { ctx.drawImage(gStart, 0, 520, 300, 120); }
+            if (gStart && gStart.ready) { ctx.drawImage(gStart, 0, 520, 300, 120); }
             else { ctx.fillStyle = "#c5d3df"; ctx.beginPath(); ctx.moveTo(0, 550); ctx.quadraticCurveTo(150, 520, 300, 640); ctx.lineTo(0, 640); ctx.fill(); }
 
             let gEnd = ASSETS.images.ground_end;
-            if (gEnd && gEnd.complete && gEnd.naturalWidth > 0) { ctx.drawImage(gEnd, 500, 480, 350, 160); }
+            if (gEnd && gEnd.ready) { ctx.drawImage(gEnd, 500, 480, 350, 160); }
             else { ctx.fillStyle = "#c5d3df"; ctx.beginPath(); ctx.moveTo(500, 640); ctx.quadraticCurveTo(650, 480, 850, 550); ctx.lineTo(850, 640); ctx.fill(); }
 
             let pnlB = ASSETS.images.panel_b;
             bZone.segments.forEach(s => {
-                if (pnlB && pnlB.complete && pnlB.naturalWidth > 0) { ctx.drawImage(pnlB, bZone.x, s.y, bZone.width, s.height); }
+                if (pnlB && pnlB.ready) { ctx.drawImage(pnlB, bZone.x, s.y, bZone.width, s.height); }
                 else { ctx.fillStyle = s.color; ctx.fillRect(bZone.x, s.y, bZone.width, s.height); }
                 ctx.fillStyle = "#fff"; ctx.font = "11px Arial"; ctx.fillText(s.text, bZone.x + 2, s.y + s.height / 2);
             });
@@ -778,42 +802,38 @@
             let bTile = ASSETS.images.b_tile; let bTileDmg = ASSETS.images.b_tile_dmg;
             bZone.obstacleBlocks.forEach(ob => {
                 let obX = bZone.x + ob.relX; let drawFallback = true;
-                if (ob.hp === 1 && bTileDmg && bTileDmg.complete && bTileDmg.naturalWidth > 0) { ctx.drawImage(bTileDmg, obX, ob.y, ob.w, ob.h); drawFallback = false; }
-                else if (bTile && bTile.complete && bTile.naturalWidth > 0) { ctx.drawImage(bTile, obX, ob.y, ob.w, ob.h); drawFallback = false; }
+                if (ob.hp === 1 && bTileDmg && bTileDmg.ready) { ctx.drawImage(bTileDmg, obX, ob.y, ob.w, ob.h); drawFallback = false; }
+                else if (bTile && bTile.ready) { ctx.drawImage(bTile, obX, ob.y, ob.w, ob.h); drawFallback = false; }
                 if (drawFallback) {
-                    ctx.fillStyle = ob.hp === 2 ? "#556b2f" : "#7b8d42";
-                    ctx.fillRect(obX, ob.y, ob.w, ob.h);
+                    ctx.fillStyle = ob.hp === 2 ? "#556b2f" : "#7b8d42"; ctx.fillRect(obX, ob.y, ob.w, ob.h);
                 }
             });
 
             let pnlC = ASSETS.images.panel_c;
             cZone.segments.forEach(s => {
-                if (pnlC && pnlC.complete && pnlC.naturalWidth > 0) { ctx.drawImage(pnlC, cZone.x, cZone.y + s.yOff, cZone.width, s.h); }
+                if (pnlC && pnlC.ready) { ctx.drawImage(pnlC, cZone.x, cZone.y + s.yOff, cZone.width, s.h); }
                 else { ctx.fillStyle = s.color; ctx.fillRect(cZone.x, cZone.y + s.yOff, cZone.width, s.h); }
                 ctx.fillStyle = "#fff"; ctx.font = "12px Arial"; ctx.fillText(s.text, cZone.x + 2, cZone.y + s.yOff + s.h / 2 + 5);
             });
 
             if (GAME.state === 'aiming') {
-                let vX = GAME.cameraX + canvas.width - 10;
+                let vX = GAME.cameraX + 350; // 하드코딩된 width 연산 축소
                 ctx.fillStyle = "rgba(255, 255, 255, 0.1)"; ctx.fillRect(vX, cZone.minY, 7, 380);
-                cZone.segments.forEach(s => {
-                    ctx.fillStyle = s.color; ctx.fillRect(vX, cZone.y + s.yOff, 7, s.h);
-                });
+                cZone.segments.forEach(s => { ctx.fillStyle = s.color; ctx.fillRect(vX, cZone.y + s.yOff, 7, s.h); });
             }
 
             let tRock = ASSETS.images.target; let tRockDmg = ASSETS.images.target_dmg;
             targetBlocks.forEach(b => {
                 let drawFallback = true;
-                if (b.hp === 1 && tRockDmg && tRockDmg.complete && tRockDmg.naturalWidth > 0) { ctx.drawImage(tRockDmg, b.x, b.y, b.w, b.h); drawFallback = false; }
-                else if (tRock && tRock.complete && tRock.naturalWidth > 0) { ctx.drawImage(tRock, b.x, b.y, b.w, b.h); drawFallback = false; }
+                if (b.hp === 1 && tRockDmg && tRockDmg.ready) { ctx.drawImage(tRockDmg, b.x, b.y, b.w, b.h); drawFallback = false; }
+                else if (tRock && tRock.ready) { ctx.drawImage(tRock, b.x, b.y, b.w, b.h); drawFallback = false; }
                 if (drawFallback) {
-                    ctx.fillStyle = b.hp === 2 ? "#4a5a6a" : "#6c7a89";
-                    ctx.fillRect(b.x, b.y, b.w, b.h);
+                    ctx.fillStyle = b.hp === 2 ? "#4a5a6a" : "#6c7a89"; ctx.fillRect(b.x, b.y, b.w, b.h);
                 }
             });
 
             let tData = TARGET_TYPES[player.targetEquipped]; let coreImg = ASSETS.images[tData.imgKey]; let r = tData.weakRadius;
-            if (coreImg && coreImg.complete && coreImg.naturalWidth > 0) { ctx.drawImage(coreImg, weakPoint.x - r, weakPoint.y - r, r * 2, r * 2); }
+            if (coreImg && coreImg.ready) { ctx.drawImage(coreImg, weakPoint.x - r, weakPoint.y - r, r * 2, r * 2); }
             else { ctx.fillStyle = "#8a2be2"; ctx.beginPath(); ctx.arc(weakPoint.x, weakPoint.y, r, 0, Math.PI * 2); ctx.fill(); }
 
             ctx.font = "bold 12px Arial"; ctx.fillStyle = "#000"; ctx.fillText(tData.name, weakPoint.x - 17, weakPoint.y + r + 16);
@@ -830,11 +850,11 @@
                 let cData = CANNONS[cId]; let pLevel = player.cannons[cId].level;
                 let baseImg = ASSETS.images.cannon_base; let barrelImg = ASSETS.images.cannon_barrel;
 
-                ctx.save(); ctx.translate(slotPos.x, slotPos.y); ctx.rotate(player.angle * Math.PI / 180);
-                if (barrelImg && barrelImg.complete && barrelImg.naturalWidth > 0) { ctx.drawImage(barrelImg, 0, -10, 40, 20); } else { ctx.fillStyle = "#1a252f"; ctx.fillRect(0, -8, 35, 16); }
+                ctx.save(); ctx.translate(slotPos.x, slotPos.y); ctx.rotate(player.angle * PI_180);
+                if (barrelImg && barrelImg.ready) { ctx.drawImage(barrelImg, 0, -10, 40, 20); } else { ctx.fillStyle = "#1a252f"; ctx.fillRect(0, -8, 35, 16); }
                 ctx.restore();
 
-                if (baseImg && baseImg.complete && baseImg.naturalWidth > 0) { ctx.drawImage(baseImg, slotPos.x - 20, slotPos.y - 20, 40, 40); } else { ctx.fillStyle = cData.color; ctx.beginPath(); ctx.arc(slotPos.x, slotPos.y, 18, 0, Math.PI * 2); ctx.fill(); }
+                if (baseImg && baseImg.ready) { ctx.drawImage(baseImg, slotPos.x - 20, slotPos.y - 20, 40, 40); } else { ctx.fillStyle = cData.color; ctx.beginPath(); ctx.arc(slotPos.x, slotPos.y, 18, 0, Math.PI * 2); ctx.fill(); }
 
                 ctx.font = "bold 13px Arial"; ctx.textAlign = "center";
                 ctx.fillStyle = "#000"; ctx.fillText(`Lv.${pLevel}`, slotPos.x + 1, slotPos.y + 36); ctx.fillStyle = "#fff"; ctx.fillText(`Lv.${pLevel}`, slotPos.x, slotPos.y + 35);
@@ -851,14 +871,13 @@
             }
 
             projectiles.forEach(p => {
-                if (p.active) { ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill(); }
+                ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fill();
             });
 
             hitParticles.forEach(p => {
                 let curSize = p.size * (p.life / 50);
                 if (curSize > 0) {
-                    ctx.fillStyle = p.color;
-                    ctx.fillRect(p.x - curSize / 2, p.y - curSize / 2, curSize, curSize);
+                    ctx.fillStyle = p.color; ctx.fillRect(p.x - curSize / 2, p.y - curSize / 2, curSize, curSize);
                 }
             });
 
