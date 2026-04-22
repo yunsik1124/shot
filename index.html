@@ -3,301 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Project Color-Shot v8.8.5 (Fixed Ratio & GPU Scaled)</title>
+    <title>Project Color-Shot v8.8.6 (No I/O Blocking & Audio Throttled)</title>
     <style>
         /* 🎮 모바일 꽉 찬 화면 및 스크롤 바운스 완벽 차단 */
         body {
-            margin: 0;
-            padding: 0;
-            background-color: #111;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            width: 100vw;
-            height: 100vh;
-            height: 100dvh;
-            overscroll-behavior: none;
-            font-family: 'Malgun Gothic', sans-serif;
+            margin: 0; padding: 0; background-color: #111;
+            display: flex; justify-content: center; align-items: center;
+            width: 100vw; height: 100vh; height: 100dvh;
+            overscroll-behavior: none; font-family: 'Malgun Gothic', sans-serif;
             overflow: hidden;
         }
 
-        /* ★ [최적화] 크기 고정 및 GPU 스케일링을 위한 래퍼 */
+        /* ★ 크기 고정 및 GPU 스케일링 래퍼 */
         #game-wrapper {
-            position: relative;
-            width: 360px;
-            height: 640px;
+            position: relative; width: 360px; height: 640px;
             transform-origin: center center;
-            /* transform: scale(...)은 JS에서 계산되어 주입됨 */
         }
 
         #game-container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 360px;
-            height: 640px;
-            background-color: #e0e7ee;
-            overflow: hidden;
-            transform: translateZ(0);
-            backface-visibility: hidden;
-            touch-action: none; /* 인게임 조작 중 밀림 방지 */
+            position: absolute; top: 0; left: 0;
+            width: 360px; height: 640px; background-color: #e0e7ee;
+            overflow: hidden; transform: translateZ(0);
+            backface-visibility: hidden; touch-action: none;
         }
 
         canvas {
-            display: block;
-            width: 360px;
-            height: 640px;
-            image-rendering: pixelated; /* 도트 깨짐 방지 및 렌더링 부하 최소화 */
+            display: block; width: 360px; height: 640px;
+            image-rendering: pixelated; 
         }
 
         .ui-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%; pointer-events: none;
         }
 
         .top-bar {
-            display: flex;
-            justify-content: space-between;
-            padding: 15px 10px;
-            color: #333;
-            font-weight: bold;
-            font-size: 13px;
+            display: flex; justify-content: space-between;
+            padding: 15px 10px; color: #333; font-weight: bold; font-size: 13px;
         }
 
         .wind-indicator {
-            text-align: center;
-            font-size: 15px;
-            margin-top: 5px;
-            color: #333;
-            font-weight: bold;
+            text-align: center; font-size: 15px; margin-top: 5px;
+            color: #333; font-weight: bold;
         }
 
         #itemBtn {
-            position: absolute;
-            bottom: 25px;
-            right: 25px;
-            background: linear-gradient(135deg, #f39c12, #d35400);
-            color: white;
-            border-radius: 50%;
-            width: 60px;
-            height: 60px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            font-size: 11px;
-            font-weight: bold;
-            cursor: pointer;
-            pointer-events: auto;
-            transition: transform 0.1s, opacity 0.3s, background 0.3s;
-            border: 2px solid #fff;
-            z-index: 20;
+            position: absolute; bottom: 25px; right: 25px;
+            background: linear-gradient(135deg, #f39c12, #d35400); color: white;
+            border-radius: 50%; width: 60px; height: 60px;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            font-size: 11px; font-weight: bold; cursor: pointer; pointer-events: auto;
+            transition: transform 0.1s, opacity 0.3s, background 0.3s; border: 2px solid #fff; z-index: 20;
         }
-
-            #itemBtn:active {
-                transform: scale(0.9);
-            }
-
-            #itemBtn.disabled {
-                cursor: not-allowed;
-                opacity: 0.3;
-                filter: grayscale(100%);
-            }
-
-            #itemBtn.active {
-                background: linear-gradient(135deg, #2ecc71, #27ae60);
-                border-color: #fff;
-            }
+        #itemBtn:active { transform: scale(0.9); }
+        #itemBtn.disabled { cursor: not-allowed; opacity: 0.3; filter: grayscale(100%); }
+        #itemBtn.active { background: linear-gradient(135deg, #2ecc71, #27ae60); border-color: #fff; }
 
         .virtual-stick-guide {
-            position: absolute;
-            bottom: 105px;
-            right: 20px;
-            width: 70px;
-            height: 70px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 50%;
-            border: 2px solid rgba(255, 255, 255, 0.4);
-            pointer-events: none;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            opacity: 0.5;
-            transition: opacity 0.2s;
-            z-index: 10;
+            position: absolute; bottom: 105px; right: 20px;
+            width: 70px; height: 70px; background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.4);
+            pointer-events: none; display: flex; justify-content: center; align-items: center;
+            opacity: 0.5; transition: opacity 0.2s; z-index: 10;
         }
-
-            .virtual-stick-guide::after {
-                content: '';
-                width: 34px;
-                height: 34px;
-                background: #444;
-                border-radius: 50%;
-                border: 2px solid #222;
-            }
-
-        #game-container.dragging .virtual-stick-guide {
-            opacity: 1;
-            background: rgba(255, 255, 255, 0.3);
+        .virtual-stick-guide::after {
+            content: ''; width: 34px; height: 34px; background: #444; border-radius: 50%; border: 2px solid #222;
         }
+        #game-container.dragging .virtual-stick-guide { opacity: 1; background: rgba(255, 255, 255, 0.3); }
 
         .popup {
-            display: none;
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.85);
-            pointer-events: auto;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: white;
-            z-index: 100;
-            touch-action: auto; /* 상점 정상 스크롤 */
+            display: none; position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%; background: rgba(0,0,0,0.85);
+            pointer-events: auto; flex-direction: column; justify-content: center; align-items: center;
+            color: white; z-index: 100; touch-action: auto; 
         }
 
-            .popup button {
-                margin-top: 10px;
-                padding: 12px 25px;
-                font-size: 15px;
-                font-weight: bold;
-                border: none;
-                background-color: #5b8fb9;
-                color: white;
-                border-radius: 8px;
-                cursor: pointer;
-                transition: 0.2s;
-            }
-
-                .popup button:active {
-                    transform: scale(0.95);
-                }
-
-        #menuUI {
-            background: transparent;
-            justify-content: flex-start;
-            padding-top: 80px;
+        .popup button {
+            margin-top: 10px; padding: 12px 25px; font-size: 15px; font-weight: bold; border: none;
+            background-color: #5b8fb9; color: white; border-radius: 8px; cursor: pointer; transition: 0.2s;
         }
+        .popup button:active { transform: scale(0.95); }
 
-            #menuUI h1 {
-                font-size: 36px;
-                text-align: center;
-                margin-bottom: 5px;
-                color: #fff;
-            }
+        #menuUI { background: transparent; justify-content: flex-start; padding-top: 80px; }
+        #menuUI h1 { font-size: 36px; text-align: center; margin-bottom: 5px; color: #fff; }
+        #menuUI .nickname { font-size: 14px; color: #eee; margin-bottom: 40px; }
+        .menu-btn-group { display: flex; flex-direction: column; gap: 10px; width: 60%; }
 
-            #menuUI .nickname {
-                font-size: 14px;
-                color: #eee;
-                margin-bottom: 40px;
-            }
-
-        .menu-btn-group {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            width: 60%;
+        #shopPopup { justify-content: flex-start; padding-top: 30px; }
+        .shop-tabs { display: flex; width: 90%; gap: 5px; margin-bottom: 10px; }
+        .shop-tabs button { flex: 1; padding: 10px 0; font-size: 13px; margin-top: 0; background-color: #34495e; border-radius: 5px 5px 0 0; }
+        .shop-tabs button.active { background-color: #5b8fb9; border-bottom: 3px solid #fff; }
+        
+        .shop-list { 
+            width: 100%; max-height: 60%; overflow-y: auto; 
+            display: flex; flex-direction: column; align-items: center; 
+            -webkit-overflow-scrolling: touch; 
         }
+        .shop-item { background: rgba(255,255,255,0.15); padding: 15px; border-radius: 8px; margin-bottom: 10px; width: 85%; text-align: center; border: 1px solid rgba(255,255,255,0.2); }
+        .shop-item.locked { opacity: 0.5; background: rgba(100,100,100,0.2); }
+        .item-name { font-weight: bold; font-size: 16px; margin-bottom: 5px; color: #fff; }
+        .item-desc { font-size: 12px; color: #ddd; margin-bottom: 10px; line-height: 1.4; }
+        .btn-group { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
 
-        #shopPopup {
-            justify-content: flex-start;
-            padding-top: 30px;
-        }
-
-        .shop-tabs {
-            display: flex;
-            width: 90%;
-            gap: 5px;
-            margin-bottom: 10px;
-        }
-
-            .shop-tabs button {
-                flex: 1;
-                padding: 10px 0;
-                font-size: 13px;
-                margin-top: 0;
-                background-color: #34495e;
-                border-radius: 5px 5px 0 0;
-            }
-
-                .shop-tabs button.active {
-                    background-color: #5b8fb9;
-                    border-bottom: 3px solid #fff;
-                }
-
-        .shop-list {
-            width: 100%;
-            max-height: 60%;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .shop-item {
-            background: rgba(255,255,255,0.15);
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            width: 85%;
-            text-align: center;
-            border: 1px solid rgba(255,255,255,0.2);
-        }
-
-            .shop-item.locked {
-                opacity: 0.5;
-                background: rgba(100,100,100,0.2);
-            }
-
-        .item-name {
-            font-weight: bold;
-            font-size: 16px;
-            margin-bottom: 5px;
-            color: #fff;
-        }
-
-        .item-desc {
-            font-size: 12px;
-            color: #ddd;
-            margin-bottom: 10px;
-            line-height: 1.4;
-        }
-
-        .btn-group {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .ranking-board {
-            background: rgba(255,255,255,0.1);
-            border-radius: 8px;
-            padding: 15px;
-            width: 80%;
-            margin: 15px 0;
-            border: 1px solid rgba(255,255,255,0.3);
-        }
-
-            .ranking-board h3 {
-                margin: 0 0 10px 0;
-                text-align: center;
-                color: #ffd700;
-            }
-
-        .rank-item {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 5px;
-            font-size: 14px;
-        }
+        .ranking-board { background: rgba(255,255,255,0.1); border-radius: 8px; padding: 15px; width: 80%; margin: 15px 0; border: 1px solid rgba(255,255,255,0.3); }
+        .ranking-board h3 { margin: 0 0 10px 0; text-align: center; color: #ffd700; }
+        .rank-item { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -359,7 +169,7 @@
 
     <script>
         const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d', { alpha: false }); // 성능 향상 블렌딩 오프
+        const ctx = canvas.getContext('2d', { alpha: false }); 
         const gameContainer = document.getElementById('game-container');
 
         const ASSETS = { images: {}, sounds: {} };
@@ -390,6 +200,8 @@
         loadSound('hit_metal', 'sfx_hit_metal.wav'); loadSound('break_metal', 'sfx_break_metal.wav');
         loadSound('buff', 'sfx_pass_buff.wav'); loadSound('gold', 'sfx_coin_get.wav'); loadSound('item', 'sfx_item_tactical.wav');
 
+        // ★ [핵심 최적화 1] 모바일 브라우저 오디오 채널 병목을 막기 위한 스로틀링
+        const audioThrottle = {};
         function playSound(key) {
             let audio = ASSETS.sounds[key];
             if (!audio || audio.readyState < 2) return;
@@ -397,6 +209,12 @@
                 if (audio.paused) { audio.loop = true; audio.volume = 0.4; audio.play().catch(e => { }); }
                 return;
             }
+            
+            const now = Date.now();
+            // 효과음 재생 쿨타임 (50ms 이내 중복 재생 무시)
+            if (audioThrottle[key] && now - audioThrottle[key] < 50) return; 
+            audioThrottle[key] = now;
+            
             audio.currentTime = 0;
             audio.play().catch(e => { });
         }
@@ -404,7 +222,11 @@
         const CAMERA = { shakeFrames: 0, shakeIntensity: 0 };
         function triggerShake(intensity, frames) { CAMERA.shakeIntensity = intensity; CAMERA.shakeFrames = frames; }
 
-        const GAME = { state: 'menu', turn: 1, maxTurns: 10, totalDamage: 0, gold: 0, nickname: "", wind: 0, cameraX: 0, worldWidth: 850, turnWaiting: false, itemActive: false };
+        const GAME = { 
+            state: 'menu', turn: 1, maxTurns: 10, totalDamage: 0, gold: 0, 
+            nickname: "", wind: 0, cameraX: 0, worldWidth: 850, turnWaiting: false, itemActive: false,
+            _lastDmg: -1, _lastGold: -1 // DOM 업데이트 방어용 캐시
+        };
         const PHYSICS = { gravity: 0.05, windMulti: 0.0025 };
 
         let floatingTexts = []; let projectiles = []; let windParticles = []; let hitParticles = [];
@@ -472,10 +294,13 @@
         }
 
         function saveLocalData() {
-            localStorage.setItem("colorShot_gold", GAME.gold); localStorage.setItem("colorShot_cannons", JSON.stringify(player.cannons));
-            localStorage.setItem("colorShot_equipped", JSON.stringify(player.equipped)); localStorage.setItem("colorShot_slot2Unlocked", player.slot2Unlocked);
-            localStorage.setItem("colorShot_targets", JSON.stringify(player.targets)); localStorage.setItem("colorShot_targetEquipped", player.targetEquipped);
-            localStorage.setItem("colorShot_items", JSON.stringify(player.items)); updateUI();
+            localStorage.setItem("colorShot_gold", GAME.gold); 
+            localStorage.setItem("colorShot_cannons", JSON.stringify(player.cannons));
+            localStorage.setItem("colorShot_equipped", JSON.stringify(player.equipped)); 
+            localStorage.setItem("colorShot_slot2Unlocked", player.slot2Unlocked);
+            localStorage.setItem("colorShot_targets", JSON.stringify(player.targets)); 
+            localStorage.setItem("colorShot_targetEquipped", player.targetEquipped);
+            localStorage.setItem("colorShot_items", JSON.stringify(player.items)); 
         }
 
         function resetGameData() { if (confirm("모든 게임 데이터가 초기화됩니다.\n초기화 하시겠습니까?")) { localStorage.clear(); location.reload(); } }
@@ -510,7 +335,7 @@
                 GAME.itemActive = true; GAME.wind = 0; document.getElementById('uiWind').innerText = `🌬️ 날씨: 멈춤 (아이템 대기 중)`;
                 initWindParticles(); addFloatingText(player.x, player.y - 40, "정지 & x2 활성!", "#f39c12"); playSound('item');
             }
-            updateUI();
+            updateUITurnAndItems();
         }
 
         function changeShopTab(tab) {
@@ -586,7 +411,6 @@
         canvas.addEventListener('pointermove', (e) => { if (!player.isDragging) return; let deltaY = dragStartY - e.clientY; player.angle = Math.max(-90, Math.min(0, initialAngle - (deltaY * 0.5))); });
         canvas.addEventListener('pointerup', () => { if (!player.isDragging) return; player.isDragging = false; gameContainer.classList.remove('dragging'); fireProjectile(); });
 
-        // ★ [최적화] 브라우저 창 크기에 맞춰 360x640 래퍼를 통째로 Scale 연산 (GPU 가속)
         function resizeGame() {
             const wrapper = document.getElementById('game-wrapper');
             const scale = Math.min(window.innerWidth / 360, window.innerHeight / 640);
@@ -595,7 +419,7 @@
 
         function init() {
             window.addEventListener('resize', resizeGame);
-            resizeGame(); // 초기 비율 세팅
+            resizeGame(); 
             loadLocalData();
             document.getElementById('menuNickname').innerText = `접속 계정: ${GAME.nickname}`;
             requestAnimationFrame(gameLoop);
@@ -605,13 +429,16 @@
             playSound('bgm'); document.getElementById('menuUI').style.display = 'none'; document.getElementById('inGameUI').style.display = 'block';
             GAME.turn = 1; GAME.totalDamage = 0; GAME.cameraX = 0; GAME.itemActive = false;
             initTarget(); generateBZone(); initTurnEnvironment();
+            // 강제 UI 리프레시
+            GAME._lastDmg = -1;
         }
 
         function initTurnEnvironment() {
             projectiles = []; hitParticles = []; GAME.turnWaiting = false; GAME.state = 'aiming';
             if (!GAME.itemActive) GAME.wind = Math.floor(Math.random() * 11) - 5; else GAME.wind = 0;
             let windText = GAME.wind === 0 ? "고요함" : (GAME.wind > 0 ? `우풍 ${GAME.wind}` : `좌풍 ${Math.abs(GAME.wind)}`);
-            document.getElementById('uiWind').innerText = `🌬️ 날씨: ${windText}`; initWindParticles(); updateUI();
+            document.getElementById('uiWind').innerText = `🌬️ 날씨: ${windText}`; initWindParticles(); 
+            updateUITurnAndItems();
         }
 
         function fireProjectile() {
@@ -627,7 +454,7 @@
                     projectiles.push({ x: startX, y: startY, vx: Math.cos(rad) * speedMult, vy: Math.sin(rad) * speedMult, active: true, radius: cData.radius, bMult: 1, bType: 'none', gMult: 1, passedBZone: false, passedCZone: false, baseDmg: cData.baseDmg, pLevel: player.cannons[cId].level, color: cData.color });
                 }
             });
-            saveLocalData(); updateUI();
+            updateUITurnAndItems();
         }
 
         function endGame() {
@@ -642,15 +469,31 @@
 
         function returnToMenu() { document.getElementById('resultPopup').style.display = 'none'; document.getElementById('menuUI').style.display = 'flex'; GAME.state = 'menu'; GAME.cameraX = 0; }
 
-        function updateUI() {
-            document.getElementById('uiNickname').innerText = GAME.nickname; document.getElementById('uiTurn').innerText = `Turn: ${GAME.turn}/${GAME.maxTurns}`;
-            document.getElementById('uiScore').innerText = `점수: ${GAME.totalDamage}`; document.getElementById('uiGold').innerText = `💰 ${GAME.gold}`;
-            let iBtn = document.getElementById('itemBtn'); document.getElementById('itemCount').innerText = `${player.items.tactical}/3`;
+        // ★ [핵심 최적화 2] Layout Thrashing (DOM 재계산) 방지용 UI 분리
+        function updateUITurnAndItems() {
+            document.getElementById('uiNickname').innerText = GAME.nickname; 
+            document.getElementById('uiTurn').innerText = `Turn: ${GAME.turn}/${GAME.maxTurns}`;
+            let iBtn = document.getElementById('itemBtn'); 
+            document.getElementById('itemCount').innerText = `${player.items.tactical}/3`;
             if (GAME.itemActive) iBtn.classList.add('active'); else iBtn.classList.remove('active');
             if (player.items.tactical === 0 || GAME.state !== 'aiming') iBtn.classList.add('disabled'); else iBtn.classList.remove('disabled');
         }
 
-        function gameLoop() { updatePhysics(); drawScene(); requestAnimationFrame(gameLoop); }
+        function updateRealtimeScoreUI() {
+            if (GAME.totalDamage !== GAME._lastDmg || GAME.gold !== GAME._lastGold) {
+                document.getElementById('uiScore').innerText = `점수: ${GAME.totalDamage}`; 
+                document.getElementById('uiGold').innerText = `💰 ${GAME.gold}`;
+                GAME._lastDmg = GAME.totalDamage;
+                GAME._lastGold = GAME.gold;
+            }
+        }
+
+        function gameLoop() { 
+            updatePhysics(); 
+            drawScene(); 
+            updateRealtimeScoreUI(); // 루프 끝에서 한 번만 DOM 변화 감지 및 업데이트
+            requestAnimationFrame(gameLoop); 
+        }
 
         function updatePhysics() {
             if (CAMERA.shakeFrames > 0) CAMERA.shakeFrames--;
@@ -672,7 +515,12 @@
 
             if (GAME.state === 'returning') {
                 GAME.cameraX -= 12;
-                if (GAME.cameraX <= 0) { GAME.cameraX = 0; GAME.turn++; if (GAME.turn > GAME.maxTurns) endGame(); else initTurnEnvironment(); }
+                if (GAME.cameraX <= 0) { 
+                    GAME.cameraX = 0; 
+                    GAME.turn++; 
+                    if (GAME.turn > GAME.maxTurns) endGame(); 
+                    else initTurnEnvironment(); 
+                }
             }
 
             if (GAME.state === 'flying') {
@@ -688,8 +536,7 @@
                         for (let j = bZone.obstacleBlocks.length - 1; j >= 0; j--) {
                             let ob = bZone.obstacleBlocks[j]; let obX = bZone.x + ob.relX;
                             let closestX = Math.max(obX, Math.min(p.x, obX + ob.w)); let closestY = Math.max(ob.y, Math.min(p.y, ob.y + ob.h));
-
-                            // ★ [최적화] Math.hypot 연산 제거 후 거리 제곱 곱 연산으로 교체 (성능 대폭 향상)
+                            
                             let distX = p.x - closestX; let distY = p.y - closestY;
                             if ((distX * distX) + (distY * distY) <= (p.radius * p.radius)) {
                                 hitObstacle = true; ob.hp -= 1; p.active = false;
@@ -701,7 +548,6 @@
                         }
                         if (!p.active) continue;
                         if (!hitObstacle && !p.passedBZone) {
-                            // ★ [최적화] .find 콜백(익명 화살표 함수) 제거 후 for 루프 교체 (GC 방지)
                             let hitSegment = null;
                             for (let k = 0; k < bZone.segments.length; k++) {
                                 if (p.y >= bZone.segments[k].y && p.y <= bZone.segments[k].y + bZone.segments[k].height) {
@@ -720,8 +566,6 @@
 
                     if (!p.passedCZone && p.x > cZone.x && p.x < cZone.x + cZone.width && p.y > cZone.y && p.y < cZone.y + cZone.height) {
                         p.passedCZone = true; let relY = p.y - cZone.y;
-
-                        // ★ [최적화] 익명 함수 제거
                         let hitSeg = null;
                         for (let k = 0; k < cZone.segments.length; k++) {
                             if (relY >= cZone.segments[k].yOff && relY <= cZone.segments[k].yOff + cZone.segments[k].h) {
@@ -748,12 +592,12 @@
                             GAME.totalDamage += finalDamage; GAME.gold += Math.floor(finalDamage / 10) * (p.gMult || 1);
                             playSound('hit_rock'); createHitParticles(p.x, p.y, p.color); addFloatingText(p.x, p.y - 15, `🎯 ${finalDamage}`, "#ffff00");
                             b.hp -= 1; if (b.hp <= 0) { playSound('break_rock'); targetBlocks.splice(j, 1); }
-                            saveLocalData(); break;
+                            // ★ [핵심 최적화 1] 충돌 루프 내에서 localStorage 저장 제거됨
+                            break;
                         }
                     }
 
                     if (!hasHitAnyBlock && p.active) {
-                        // ★ [최적화] Math.hypot 제거
                         let dx = p.x - weakPoint.x;
                         let dy = p.y - weakPoint.y;
                         let r = TARGET_TYPES[player.targetEquipped].weakRadius;
@@ -763,7 +607,7 @@
                             let mult = p.bType === 'dmg' ? p.bMult : 1; let finalDamage = Math.floor((p.baseDmg + (p.pLevel * 10)) * mult * 2.5);
                             GAME.totalDamage += finalDamage; GAME.gold += Math.floor(finalDamage / 10) * (p.gMult || 1);
                             triggerShake(15, 15); createHitParticles(p.x, p.y, p.color); addFloatingText(p.x, p.y - 15, `💥 Critical! ${finalDamage}`, "#ff00ff");
-                            saveLocalData();
+                            // ★ [핵심 최적화 1] 충돌 루프 내에서 localStorage 저장 제거됨
                         }
                     }
                 }
@@ -773,7 +617,13 @@
                 }
 
                 if (activeCount > 0) GAME.cameraX = Math.max(0, Math.min(leaderX - 180, GAME.worldWidth - canvas.width));
-                if (activeCount === 0 && !GAME.turnWaiting) { GAME.turnWaiting = true; setTimeout(() => { GAME.state = 'returning'; }, 1000); }
+                
+                // ★ 턴이 완전히 종료되었을 때, 딱 한 번만 localStorage에 세이브
+                if (activeCount === 0 && !GAME.turnWaiting) { 
+                    GAME.turnWaiting = true; 
+                    saveLocalData(); 
+                    setTimeout(() => { GAME.state = 'returning'; }, 1000); 
+                }
             }
         }
 
