@@ -3,66 +3,318 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Project Color-Shot v8.8.6 (CSS Background & Audio Optimized)</title>
+    <title>Project Color-Shot v8.8.7 (Zero Dummy Assets)</title>
     <style>
-        body { margin: 0; padding: 0; background-color: #111; display: flex; justify-content: center; align-items: center; width: 100vw; height: 100vh; height: 100dvh; overscroll-behavior: none; font-family: 'Malgun Gothic', sans-serif; overflow: hidden; }
-        
-        #game-wrapper { position: relative; width: 360px; height: 640px; transform-origin: center center; }
-        
-        #game-container { position: absolute; top: 0; left: 0; width: 360px; height: 640px; background-color: #e0e7ee; overflow: hidden; transform: translateZ(0); backface-visibility: hidden; touch-action: none; }
-        
-        /* ★ [핵심 최적화 1] 배경 이미지를 캔버스가 아닌 CSS 레이어로 분리! */
+        /* 🎮 모바일 꽉 찬 화면 및 스크롤 바운스 완벽 차단 */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #111;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            overscroll-behavior: none;
+            font-family: 'Malgun Gothic', sans-serif;
+            overflow: hidden;
+        }
+
+        #game-wrapper {
+            position: relative;
+            width: 360px;
+            height: 640px;
+            transform-origin: center center;
+        }
+
+        #game-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 360px;
+            height: 640px;
+            background-color: #e0e7ee;
+            overflow: hidden;
+            transform: translateZ(0);
+            backface-visibility: hidden;
+            touch-action: none;
+        }
+
         #bg-layer {
             position: absolute;
-            top: 0; left: 0;
-            width: 1050px; /* GAME.worldWidth(850) + 200 */
+            top: 0;
+            left: 0;
+            width: 1050px;
             height: 640px;
             background-image: url('img/bg_stage_01.png');
             background-size: cover;
             background-repeat: no-repeat;
-            will-change: transform; /* 브라우저 GPU 가속 강제 활성화 */
+            will-change: transform;
             z-index: 0;
         }
 
-        /* 캔버스는 배경을 투명하게 해서 뒤에 깔린 bg-layer가 보이게 함 */
-        canvas { display: block; width: 360px; height: 640px; image-rendering: pixelated; position: relative; z-index: 1; background: transparent; }
-        
-        .ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
-        .top-bar { display: flex; justify-content: space-between; padding: 15px 10px; color: #333; font-weight: bold; font-size: 13px; text-shadow: 1px 1px 2px #fff; }
-        .wind-indicator { text-align: center; font-size: 15px; margin-top: 5px; color: #333; font-weight: bold; text-shadow: 1px 1px 2px #fff; }
-        
-        #itemBtn { position: absolute; bottom: 25px; right: 25px; background: linear-gradient(135deg, #f39c12, #d35400); color: white; border-radius: 50%; width: 60px; height: 60px; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 11px; font-weight: bold; cursor: pointer; pointer-events: auto; transition: transform 0.1s, opacity 0.3s, background 0.3s; border: 2px solid #fff; z-index: 20; }
-        #itemBtn:active { transform: scale(0.9); }
-        #itemBtn.disabled { cursor: not-allowed; opacity: 0.3; filter: grayscale(100%); }
-        #itemBtn.active { background: linear-gradient(135deg, #2ecc71, #27ae60); border-color: #fff; }
-        
-        .virtual-stick-guide { position: absolute; bottom: 105px; right: 20px; width: 70px; height: 70px; background: rgba(255, 255, 255, 0.2); border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.4); pointer-events: none; display: flex; justify-content: center; align-items: center; opacity: 0.5; transition: opacity 0.2s; z-index: 10; }
-        .virtual-stick-guide::after { content: ''; width: 34px; height: 34px; background: #444; border-radius: 50%; border: 2px solid #222; }
-        #game-container.dragging .virtual-stick-guide { opacity: 1; background: rgba(255, 255, 255, 0.3); }
-        
-        .popup { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); pointer-events: auto; flex-direction: column; justify-content: center; align-items: center; color: white; z-index: 100; touch-action: auto; }
-        .popup button { margin-top: 10px; padding: 12px 25px; font-size: 15px; font-weight: bold; border: none; background-color: #5b8fb9; color: white; border-radius: 8px; cursor: pointer; transition: 0.2s; }
-        .popup button:active { transform: scale(0.95); }
-        
-        #menuUI { background: transparent; justify-content: flex-start; padding-top: 80px; }
-        #menuUI h1 { font-size: 36px; text-align: center; margin-bottom: 5px; color: #fff; }
-        #menuUI .nickname { font-size: 14px; color: #eee; margin-bottom: 40px; }
-        .menu-btn-group { display: flex; flex-direction: column; gap: 10px; width: 60%; }
-        
-        #shopPopup { justify-content: flex-start; padding-top: 30px; }
-        .shop-tabs { display: flex; width: 90%; gap: 5px; margin-bottom: 10px; }
-        .shop-tabs button { flex: 1; padding: 10px 0; font-size: 13px; margin-top: 0; background-color: #34495e; border-radius: 5px 5px 0 0; }
-        .shop-tabs button.active { background-color: #5b8fb9; border-bottom: 3px solid #fff; }
-        .shop-list { width: 100%; max-height: 60%; overflow-y: auto; display: flex; flex-direction: column; align-items: center; -webkit-overflow-scrolling: touch; }
-        .shop-item { background: rgba(255,255,255,0.15); padding: 15px; border-radius: 8px; margin-bottom: 10px; width: 85%; text-align: center; border: 1px solid rgba(255,255,255,0.2); }
-        .shop-item.locked { opacity: 0.5; background: rgba(100,100,100,0.2); }
-        .item-name { font-weight: bold; font-size: 16px; margin-bottom: 5px; color: #fff; }
-        .item-desc { font-size: 12px; color: #ddd; margin-bottom: 10px; line-height: 1.4; }
-        .btn-group { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
-        
-        .ranking-board { background: rgba(255,255,255,0.1); border-radius: 8px; padding: 15px; width: 80%; margin: 15px 0; border: 1px solid rgba(255,255,255,0.3); }
-        .ranking-board h3 { margin: 0 0 10px 0; text-align: center; color: #ffd700; }
-        .rank-item { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 14px; }
+        canvas {
+            display: block;
+            width: 360px;
+            height: 640px;
+            image-rendering: pixelated;
+            position: relative;
+            z-index: 1;
+            background: transparent;
+        }
+
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px 10px;
+            color: #333;
+            font-weight: bold;
+            font-size: 13px;
+            text-shadow: 1px 1px 2px #fff;
+        }
+
+        .wind-indicator {
+            text-align: center;
+            font-size: 15px;
+            margin-top: 5px;
+            color: #333;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px #fff;
+        }
+
+        #itemBtn {
+            position: absolute;
+            bottom: 25px;
+            right: 25px;
+            background: linear-gradient(135deg, #f39c12, #d35400);
+            color: white;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: transform 0.1s, opacity 0.3s, background 0.3s;
+            border: 2px solid #fff;
+            z-index: 20;
+        }
+
+            #itemBtn:active {
+                transform: scale(0.9);
+            }
+
+            #itemBtn.disabled {
+                cursor: not-allowed;
+                opacity: 0.3;
+                filter: grayscale(100%);
+            }
+
+            #itemBtn.active {
+                background: linear-gradient(135deg, #2ecc71, #27ae60);
+                border-color: #fff;
+            }
+
+        .virtual-stick-guide {
+            position: absolute;
+            bottom: 105px;
+            right: 20px;
+            width: 70px;
+            height: 70px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            pointer-events: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0.5;
+            transition: opacity 0.2s;
+            z-index: 10;
+        }
+
+            .virtual-stick-guide::after {
+                content: '';
+                width: 34px;
+                height: 34px;
+                background: #444;
+                border-radius: 50%;
+                border: 2px solid #222;
+            }
+
+        #game-container.dragging .virtual-stick-guide {
+            opacity: 1;
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .popup {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            pointer-events: auto;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 100;
+            touch-action: auto;
+        }
+
+            .popup button {
+                margin-top: 10px;
+                padding: 12px 25px;
+                font-size: 15px;
+                font-weight: bold;
+                border: none;
+                background-color: #5b8fb9;
+                color: white;
+                border-radius: 8px;
+                cursor: pointer;
+                transition: 0.2s;
+            }
+
+                .popup button:active {
+                    transform: scale(0.95);
+                }
+
+        #menuUI {
+            background: transparent;
+            justify-content: flex-start;
+            padding-top: 80px;
+        }
+
+            #menuUI h1 {
+                font-size: 36px;
+                text-align: center;
+                margin-bottom: 5px;
+                color: #fff;
+            }
+
+            #menuUI .nickname {
+                font-size: 14px;
+                color: #eee;
+                margin-bottom: 40px;
+            }
+
+        .menu-btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 60%;
+        }
+
+        #shopPopup {
+            justify-content: flex-start;
+            padding-top: 30px;
+        }
+
+        .shop-tabs {
+            display: flex;
+            width: 90%;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+
+            .shop-tabs button {
+                flex: 1;
+                padding: 10px 0;
+                font-size: 13px;
+                margin-top: 0;
+                background-color: #34495e;
+                border-radius: 5px 5px 0 0;
+            }
+
+                .shop-tabs button.active {
+                    background-color: #5b8fb9;
+                    border-bottom: 3px solid #fff;
+                }
+
+        .shop-list {
+            width: 100%;
+            max-height: 60%;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .shop-item {
+            background: rgba(255,255,255,0.15);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            width: 85%;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+            .shop-item.locked {
+                opacity: 0.5;
+                background: rgba(100,100,100,0.2);
+            }
+
+        .item-name {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 5px;
+            color: #fff;
+        }
+
+        .item-desc {
+            font-size: 12px;
+            color: #ddd;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+
+        .btn-group {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .ranking-board {
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 15px;
+            width: 80%;
+            margin: 15px 0;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+            .ranking-board h3 {
+                margin: 0 0 10px 0;
+                text-align: center;
+                color: #ffd700;
+            }
+
+        .rank-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
@@ -125,9 +377,9 @@
 
     <script>
         const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d', { alpha: true }); // 배경 투명화를 위해 alpha: true 유지 (중요)
+        const ctx = canvas.getContext('2d', { alpha: true });
         const gameContainer = document.getElementById('game-container');
-        const bgLayer = document.getElementById('bg-layer'); // 배경 DOM 객체
+        const bgLayer = document.getElementById('bg-layer');
 
         const ASSETS = { images: {}, sounds: {} };
         const PI_180 = Math.PI / 180;
@@ -143,36 +395,30 @@
             ASSETS.sounds[key] = audio;
         }
 
-        // bg_stage_01.png는 CSS에서 로드하므로 캔버스 로드에서 제외해도 무방함
-        loadImage('ground_start', 'ground_start.png'); loadImage('ground_end', 'ground_end.png');
-        loadImage('cannon_base', 'cannon_base.png'); loadImage('cannon_barrel', 'cannon_barrel.png');
-        loadImage('b_tile', 'b_obstacle_tile.png'); loadImage('b_tile_dmg', 'b_obstacle_dmg.png');
-        loadImage('panel_b', 'panel_buff_b.png'); loadImage('panel_c', 'panel_buff_c.png');
-        loadImage('target', 'target_rock.png'); loadImage('target_dmg', 'target_rock_dmg.png');
-        loadImage('core_s1', 'target_core_s1.png'); loadImage('core_s2', 'target_core_s2.png');
-        loadImage('core_s3', 'target_core_s3.png'); loadImage('core_s4', 'target_core_s4.png'); loadImage('core_s5', 'target_core_s5.png');
+        // ★ [최적화 1] 실제로 존재하는 2개 이미지만 남기고, 더미(404 에러) 호출 전부 삭제!
+        loadImage('ground_start', 'ground_start.png');
+        loadImage('ground_end', 'ground_end.png');
 
-        loadSound('bgm', 'bgm_battle_loop.mp3'); loadSound('shoot', 'sfx_shoot_normal.wav');
-        loadSound('hit_rock', 'sfx_hit_rock.wav'); loadSound('break_rock', 'sfx_break_rock.wav');
-        loadSound('hit_metal', 'sfx_hit_metal.wav'); loadSound('break_metal', 'sfx_break_metal.wav');
-        loadSound('buff', 'sfx_pass_buff.wav'); loadSound('gold', 'sfx_coin_get.wav'); loadSound('item', 'sfx_item_tactical.wav');
+        // ★ [최적화 2] 실제로 존재하는 사운드만 남기고 호출 삭제!
+        loadSound('bgm', 'bgm_battle_loop.mp3');
+        loadSound('shoot', 'sfx_shoot_normal.wav');
+        loadSound('hit_rock', 'sfx_hit_rock.wav');
+        loadSound('break_rock', 'sfx_break_rock.wav');
+        loadSound('hit_metal', 'sfx_hit_metal.wav');
+        loadSound('break_metal', 'sfx_break_metal.wav');
+        loadSound('buff', 'sfx_pass_buff.wav');
 
         const audioThrottle = {};
         function playSound(key) {
             let audio = ASSETS.sounds[key];
-            if (!audio || audio.readyState < 2) return;
-            
-            // ★ [핵심 최적화 2] 모바일에서 BGM 재생은 유저 상호작용 후가 아니면 에러를 뿜으며 스레드를 멈추게 함. 
-            // 렉이 걸린다면 우선 BGM 코드는 주석 처리하거나 무시하도록 처리.
+            if (!audio || audio.readyState < 2) return; // 없는 사운드 호출 시 안전하게 무시
+
             if (key === 'bgm') {
-                /* 잠시 BGM 주석처리 (테스트용)
-                if (audio.paused) { audio.loop = true; audio.volume = 0.4; audio.play().catch(e => { }); }
-                */
+                // 모바일 자동재생 에러 방지 위해 주석 유지
                 return;
             }
 
             const now = Date.now();
-            // 효과음 재생 쿨타임을 모바일 타겟으로 50ms -> 100ms로 늘림 (I/O 병목 완화)
             if (audioThrottle[key] && now - audioThrottle[key] < 100) return;
             audioThrottle[key] = now;
 
@@ -186,7 +432,7 @@
         const GAME = {
             state: 'menu', turn: 1, maxTurns: 10, totalDamage: 0, gold: 0,
             nickname: "", wind: 0, cameraX: 0, worldWidth: 850, turnWaiting: false, itemActive: false,
-            _lastDmg: -1, _lastGold: -1 
+            _lastDmg: -1, _lastGold: -1
         };
         const PHYSICS = { gravity: 0.05, windMulti: 0.0025 };
 
@@ -281,11 +527,15 @@
             for (let i = 0; i < count; i++) { windParticles.push({ x: Math.random() * GAME.worldWidth, y: Math.random() * 640, speed: (Math.random() * 2 + 1), length: Math.random() * 15 + 5 }); }
         }
 
-        function addFloatingText(x, y, text, color) { floatingTexts.push({ x, y, text, color, life: 60 }); }
+        function addFloatingText(x, y, text, color) {
+            if (floatingTexts.length > 20) return;
+            floatingTexts.push({ x, y, text, color, life: 60 });
+        }
 
         function createHitParticles(x, y, mainColor) {
+            if (hitParticles.length > 30) return;
             const colors = [mainColor, "#ecf0f1", "#bdc3c7"];
-            for (let i = 0; i < 12; i++) { hitParticles.push({ x: x, y: y, vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8 - 2, life: 30 + Math.random() * 20, color: colors[Math.floor(Math.random() * colors.length)], size: Math.random() * 4 + 2 }); }
+            for (let i = 0; i < 8; i++) { hitParticles.push({ x: x, y: y, vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8 - 2, life: 30 + Math.random() * 20, color: colors[Math.floor(Math.random() * colors.length)], size: Math.random() * 4 + 2 }); }
         }
 
         function useItem() {
@@ -294,7 +544,7 @@
                 GAME.itemActive = false; initTurnEnvironment(); addFloatingText(player.x, player.y - 40, "아이템 취소", "#fff");
             } else {
                 GAME.itemActive = true; GAME.wind = 0; document.getElementById('uiWind').innerText = `🌬️ 날씨: 멈춤 (아이템 대기 중)`;
-                initWindParticles(); addFloatingText(player.x, player.y - 40, "정지 & x2 활성!", "#f39c12"); playSound('item');
+                initWindParticles(); addFloatingText(player.x, player.y - 40, "정지 & x2 활성!", "#f39c12");
             }
             updateUITurnAndItems();
         }
@@ -387,7 +637,7 @@
         }
 
         function startGame() {
-            playSound('bgm'); document.getElementById('menuUI').style.display = 'none'; document.getElementById('inGameUI').style.display = 'block';
+            document.getElementById('menuUI').style.display = 'none'; document.getElementById('inGameUI').style.display = 'block';
             GAME.turn = 1; GAME.totalDamage = 0; GAME.cameraX = 0; GAME.itemActive = false;
             initTarget(); generateBZone(); initTurnEnvironment();
             GAME._lastDmg = -1;
@@ -472,7 +722,6 @@
 
             if (player.isDragging) { if (player.powerDir > 0) { player.power += 0.075; if (player.power >= 18) { player.power = 18; player.powerDir = 0; } } }
 
-            // ★ CSS 배경 이동 연동 (패럴랙스 스크롤)
             bgLayer.style.transform = `translate3d(${-GAME.cameraX * 0.2}px, 0, 0)`;
 
             if (GAME.state === 'returning') {
@@ -519,7 +768,8 @@
                             if (hitSegment) {
                                 p.passedBZone = true; playSound('buff');
                                 if (hitSegment.id.includes('qty')) {
-                                    let cloneCount = hitSegment.id === 'qty4' ? 4 : 2; 
+                                    let cloneCount = hitSegment.id === 'qty4' ? 4 : 2;
+                                    if (projectiles.length > 25) cloneCount = 1;
                                     addFloatingText(bZone.x, p.y - 20, hitSegment.text, hitSegment.color);
                                     for (let j = 1; j < cloneCount; j++) { projectiles.push({ x: p.x, y: p.y, vx: p.vx + (Math.random() - 0.5) * 1.5, vy: p.vy + (Math.random() - 0.5) * 1.5, active: true, radius: p.radius, bMult: p.bMult, bType: p.bType, gMult: p.gMult, passedBZone: true, passedCZone: p.passedCZone, baseDmg: p.baseDmg, pLevel: p.pLevel, color: p.color }); }
                                 } else { p.bMult = parseInt(hitSegment.id.replace(/[^0-9]/g, '')); p.bType = 'dmg'; addFloatingText(bZone.x, p.y - 20, hitSegment.text, hitSegment.color); }
@@ -540,8 +790,9 @@
                             playSound('buff');
                             if (hitSeg.type === 'goldMult') { p.gMult = 2; addFloatingText(cZone.x, p.y - 20, `💰 x2`, "#0f0"); }
                             else if (hitSeg.type === 'qty4') {
+                                let cloneCount = projectiles.length > 25 ? 1 : 4;
                                 addFloatingText(cZone.x, p.y - 20, "C존 개수 x4", hitSeg.color);
-                                for (let j = 1; j < 4; j++) { projectiles.push({ x: p.x, y: p.y, vx: p.vx + (Math.random() - 0.5) * 2, vy: p.vy + (Math.random() - 0.5) * 2, active: true, radius: p.radius, bMult: p.bMult, bType: p.bType, gMult: p.gMult, passedBZone: true, passedCZone: true, baseDmg: p.baseDmg, pLevel: p.pLevel, color: p.color }); }
+                                for (let j = 1; j < cloneCount; j++) { projectiles.push({ x: p.x, y: p.y, vx: p.vx + (Math.random() - 0.5) * 2, vy: p.vy + (Math.random() - 0.5) * 2, active: true, radius: p.radius, bMult: p.bMult, bType: p.bType, gMult: p.gMult, passedBZone: true, passedCZone: true, baseDmg: p.baseDmg, pLevel: p.pLevel, color: p.color }); }
                             }
                         }
                     }
@@ -588,7 +839,6 @@
         }
 
         function drawScene() {
-            // ★ [핵심 최적화 3] 캔버스 배경을 투명하게 지움 (fill color 없이)
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             let sx = 0; let sy = 0;
@@ -597,7 +847,8 @@
             if (GAME.state === 'menu') GAME.cameraX = 0;
             ctx.save(); ctx.translate(-GAME.cameraX + sx, sy);
 
-            // 배경 이미지 그리는 로직 완전히 제거됨 (CSS로 이관)
+            let camLeft = GAME.cameraX;
+            let camRight = GAME.cameraX + canvas.width;
 
             if (GAME.wind !== 0 && GAME.state !== 'menu') {
                 ctx.strokeStyle = "#b0bec5"; ctx.lineWidth = 1.5; ctx.beginPath();
@@ -617,27 +868,21 @@
             if (gEnd && gEnd.ready) { ctx.drawImage(gEnd, 500, 480, 350, 160); }
             else { ctx.fillStyle = "#c5d3df"; ctx.beginPath(); ctx.moveTo(500, 640); ctx.quadraticCurveTo(650, 480, 850, 550); ctx.lineTo(850, 640); ctx.fill(); }
 
-            let pnlB = ASSETS.images.panel_b;
+            // ★ [최적화 3] 없는 이미지 검사(Fallback) 싹 걷어내고 순수 도형 렌더링으로 직결!
             bZone.segments.forEach(s => {
-                if (pnlB && pnlB.ready) { ctx.drawImage(pnlB, bZone.x, s.y, bZone.width, s.height); }
-                else { ctx.fillStyle = s.color; ctx.fillRect(bZone.x, s.y, bZone.width, s.height); }
+                ctx.fillStyle = s.color; ctx.fillRect(bZone.x, s.y, bZone.width, s.height);
                 ctx.fillStyle = "#fff"; ctx.font = "11px Arial"; ctx.fillText(s.text, bZone.x + 2, s.y + s.height / 2);
             });
 
-            let bTile = ASSETS.images.b_tile; let bTileDmg = ASSETS.images.b_tile_dmg;
             bZone.obstacleBlocks.forEach(ob => {
-                let obX = bZone.x + ob.relX; let drawFallback = true;
-                if (ob.hp === 1 && bTileDmg && bTileDmg.ready) { ctx.drawImage(bTileDmg, obX, ob.y, ob.w, ob.h); drawFallback = false; }
-                else if (bTile && bTile.ready) { ctx.drawImage(bTile, obX, ob.y, ob.w, ob.h); drawFallback = false; }
-                if (drawFallback) {
-                    ctx.fillStyle = ob.hp === 2 ? "#556b2f" : "#7b8d42"; ctx.fillRect(obX, ob.y, ob.w, ob.h);
-                }
+                let obX = bZone.x + ob.relX;
+                if (obX > camRight + 20 || obX + ob.w < camLeft - 20) return;
+                ctx.fillStyle = ob.hp === 2 ? "#556b2f" : "#7b8d42";
+                ctx.fillRect(obX, ob.y, ob.w, ob.h);
             });
 
-            let pnlC = ASSETS.images.panel_c;
             cZone.segments.forEach(s => {
-                if (pnlC && pnlC.ready) { ctx.drawImage(pnlC, cZone.x, cZone.y + s.yOff, cZone.width, s.h); }
-                else { ctx.fillStyle = s.color; ctx.fillRect(cZone.x, cZone.y + s.yOff, cZone.width, s.h); }
+                ctx.fillStyle = s.color; ctx.fillRect(cZone.x, cZone.y + s.yOff, cZone.width, s.h);
                 ctx.fillStyle = "#fff"; ctx.font = "12px Arial"; ctx.fillText(s.text, cZone.x + 2, cZone.y + s.yOff + s.h / 2 + 5);
             });
 
@@ -647,19 +892,14 @@
                 cZone.segments.forEach(s => { ctx.fillStyle = s.color; ctx.fillRect(vX, cZone.y + s.yOff, 7, s.h); });
             }
 
-            let tRock = ASSETS.images.target; let tRockDmg = ASSETS.images.target_dmg;
             targetBlocks.forEach(b => {
-                let drawFallback = true;
-                if (b.hp === 1 && tRockDmg && tRockDmg.ready) { ctx.drawImage(tRockDmg, b.x, b.y, b.w, b.h); drawFallback = false; }
-                else if (tRock && tRock.ready) { ctx.drawImage(tRock, b.x, b.y, b.w, b.h); drawFallback = false; }
-                if (drawFallback) {
-                    ctx.fillStyle = b.hp === 2 ? "#4a5a6a" : "#6c7a89"; ctx.fillRect(b.x, b.y, b.w, b.h);
-                }
+                if (b.x > camRight + 20 || b.x + b.w < camLeft - 20) return;
+                ctx.fillStyle = b.hp === 2 ? "#4a5a6a" : "#6c7a89";
+                ctx.fillRect(b.x, b.y, b.w, b.h);
             });
 
-            let tData = TARGET_TYPES[player.targetEquipped]; let coreImg = ASSETS.images[tData.imgKey]; let r = tData.weakRadius;
-            if (coreImg && coreImg.ready) { ctx.drawImage(coreImg, weakPoint.x - r, weakPoint.y - r, r * 2, r * 2); }
-            else { ctx.fillStyle = "#8a2be2"; ctx.beginPath(); ctx.arc(weakPoint.x, weakPoint.y, r, 0, Math.PI * 2); ctx.fill(); }
+            let tData = TARGET_TYPES[player.targetEquipped]; let r = tData.weakRadius;
+            ctx.fillStyle = "#8a2be2"; ctx.beginPath(); ctx.arc(weakPoint.x, weakPoint.y, r, 0, Math.PI * 2); ctx.fill();
 
             ctx.font = "bold 12px Arial"; ctx.fillStyle = "#000"; ctx.fillText(tData.name, weakPoint.x - 17, weakPoint.y + r + 16);
             ctx.fillStyle = "#fff"; ctx.fillText(tData.name, weakPoint.x - 18, weakPoint.y + r + 15);
@@ -673,13 +913,12 @@
                 if (!cId) { ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.arc(slotPos.x, slotPos.y, 18, 0, Math.PI * 2); ctx.fill(); return; }
 
                 let cData = CANNONS[cId]; let pLevel = player.cannons[cId].level;
-                let baseImg = ASSETS.images.cannon_base; let barrelImg = ASSETS.images.cannon_barrel;
 
                 ctx.save(); ctx.translate(slotPos.x, slotPos.y); ctx.rotate(player.angle * PI_180);
-                if (barrelImg && barrelImg.ready) { ctx.drawImage(barrelImg, 0, -10, 40, 20); } else { ctx.fillStyle = "#1a252f"; ctx.fillRect(0, -8, 35, 16); }
+                ctx.fillStyle = "#1a252f"; ctx.fillRect(0, -8, 35, 16);
                 ctx.restore();
 
-                if (baseImg && baseImg.ready) { ctx.drawImage(baseImg, slotPos.x - 20, slotPos.y - 20, 40, 40); } else { ctx.fillStyle = cData.color; ctx.beginPath(); ctx.arc(slotPos.x, slotPos.y, 18, 0, Math.PI * 2); ctx.fill(); }
+                ctx.fillStyle = cData.color; ctx.beginPath(); ctx.arc(slotPos.x, slotPos.y, 18, 0, Math.PI * 2); ctx.fill();
 
                 ctx.font = "bold 13px Arial"; ctx.textAlign = "center";
                 ctx.fillStyle = "#000"; ctx.fillText(`Lv.${pLevel}`, slotPos.x + 1, slotPos.y + 36); ctx.fillStyle = "#fff"; ctx.fillText(`Lv.${pLevel}`, slotPos.x, slotPos.y + 35);
@@ -706,11 +945,15 @@
                 }
             });
 
-            floatingTexts.forEach(ft => {
-                ctx.font = "bold 16px Arial"; ctx.globalAlpha = ft.life / 60;
-                ctx.fillStyle = "#000"; ctx.fillText(ft.text, ft.x + 1, ft.y + 1);
-                ctx.fillStyle = ft.color; ctx.fillText(ft.text, ft.x, ft.y); ctx.globalAlpha = 1.0;
-            });
+            if (floatingTexts.length > 0) {
+                ctx.font = "bold 16px Arial";
+                floatingTexts.forEach(ft => {
+                    ctx.globalAlpha = ft.life / 60;
+                    ctx.fillStyle = "#000"; ctx.fillText(ft.text, ft.x + 1, ft.y + 1);
+                    ctx.fillStyle = ft.color; ctx.fillText(ft.text, ft.x, ft.y);
+                });
+                ctx.globalAlpha = 1.0;
+            }
 
             ctx.restore();
         }
